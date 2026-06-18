@@ -3,12 +3,32 @@
     "version": "0.1.0",
     "description": "An MCP stdio server that exposes Swarm's read + reconcile facts to agent clients — a thin adapter over the `swarm` CLI's --json contract. Read-only, reconcile-only, issues no verdict.",
     "type": "module",
+    "license": "MIT",
+    "author": "José Costa",
+    "homepage": "https://github.com/jcosta33/swarm-mcp#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jcosta33/swarm-mcp.git"
+    },
+    "bugs": {
+        "url": "https://github.com/jcosta33/swarm-mcp/issues"
+    },
+    "keywords": [
+        "mcp",
+        "model-context-protocol",
+        "swarm",
+        "code-review",
+        "agents",
+        "claude"
+    ],
     "bin": {
         "swarm-mcp": "./bin/swarm-mcp.js"
     },
     "files": [
         "dist",
-        "bin"
+        "bin",
+        "README.md",
+        "LICENSE"
     ],
     "scripts": {
         "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --target=node18 --outfile=dist/index.js",
