@@ -54,7 +54,7 @@ describe('build_envelope', () => {
             task: 'feat',
             diffChangedFiles: ['a.ts'],
             coverage: [{ id: 'AC-001', kind: 'orphan', message: 'orphan row AC-001' }],
-            verifyBinding: [{ id: 'AC-001', kind: 'mismatch', message: 'verify cmd does not match' }],
+            verifyBinding: [{ id: 'AC-001', kind: 'cmd-mismatch', message: 'verify cmd does not match' }],
             scopeDivergence: ['SPEC-x not in this task'],
             selfReport: { claimedNotInDiff: ['claimed.ts'], inDiffNotClaimed: ['extra.ts'], outsideScope: ['oos.ts'] },
             emptyEvidencePassRows: ['AC-002'],
@@ -93,6 +93,16 @@ describe('build_envelope', () => {
         expect(env.noVerdictIssued).toBe(true);
         expect(env.note).toMatch(/no live run|worktree/i);
         expect(env.data).toEqual({ error: 'Usage', message: 'no worktree found for x' });
+    });
+
+    it('surfaces shape drift (the tripwire) when a review result does not match ReviewReportSchema', () => {
+        // If the CLI's reconcile shape ever drifts, swarm-mcp must NOT silently derive a wrong attention
+        // list — it passes the data through and notes that human-attention could not be derived.
+        const env = build_envelope(okResult({ totally: 'not a review report' }), 'review');
+        expect(env.ok).toBe(true);
+        expect(env.derived).toBeUndefined();
+        expect(env.note).toMatch(/did not match the expected ReviewReport shape/i);
+        expect(env.data).toEqual({ totally: 'not a review report' }); // still passed through verbatim
     });
 
     it('does NOT mislabel a non-no-worktree review error as a no-worktree case', () => {

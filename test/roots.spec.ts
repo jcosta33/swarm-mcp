@@ -66,10 +66,10 @@ describe('confine_path', () => {
 });
 
 describe('is_safe_base', () => {
-    it('accepts a real git ref (with `/`, `~`)', () => {
-        expect(is_safe_base('main')).toBe(true);
-        expect(is_safe_base('origin/main')).toBe(true);
-        expect(is_safe_base('HEAD~1')).toBe(true);
+    it('accepts real git refs (slash, tilde, caret, dot, at, reflog, SHA)', () => {
+        for (const ref of ['main', 'origin/main', 'HEAD~1', 'HEAD^', 'v1.2.3', 'feature/x-y', 'HEAD@{1}', 'a1b2c3d4e5']) {
+            expect(is_safe_base(ref), ref).toBe(true);
+        }
     });
     it('rejects flag-shaped, empty, and whitespace/control bases', () => {
         expect(is_safe_base('--force')).toBe(false);
@@ -77,6 +77,12 @@ describe('is_safe_base', () => {
         expect(is_safe_base('')).toBe(false);
         expect(is_safe_base('a b')).toBe(false);
         expect(is_safe_base(`a${String.fromCharCode(0)}b`)).toBe(false);
+    });
+    it('rejects git transport-option and shell-metacharacter injections (owns the boundary)', () => {
+        // `=`/`:` enable `--upload-pack=`/`ext::`; the rest are shell metachars. None is a legal ref char.
+        for (const bad of ['origin/--upload-pack=x', 'ext::sh -c id', 'a=b', 'a:b', '`id`', '$(id)', 'a;b', 'a|b', 'a&b', 'a>b', 'a*b', "a'b"]) {
+            expect(is_safe_base(bad), bad).toBe(false);
+        }
     });
 });
 

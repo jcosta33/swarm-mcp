@@ -39,7 +39,8 @@ describe('real stdio transport (AC-001)', () => {
         try {
             const tools = (await client.listTools()).tools.map((t) => t.name);
             expect(tools).toContain('swarm_get_status');
-            expect(tools).toHaveLength(6);
+            expect(tools).toContain('swarm_get_task');
+            expect(tools).toHaveLength(10);
 
             const result = (await client.callTool({ name: 'swarm_get_status', arguments: {} })) as {
                 structuredContent: { noVerdictIssued: boolean; data: { specs: unknown[] } };

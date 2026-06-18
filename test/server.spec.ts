@@ -92,6 +92,10 @@ const ALL_TOOL_CALLS = [
     { name: 'swarm_scan_task', arguments: { task: 'feat' } },
     { name: 'swarm_reconcile_review', arguments: { task: 'feat' } },
     { name: 'swarm_validate_review_packet', arguments: { review: 'specs/a/spec.md' } },
+    { name: 'swarm_get_task', arguments: { task: 'feat' } },
+    { name: 'swarm_get_spec', arguments: { spec: 'SPEC-feat' } },
+    { name: 'swarm_get_review', arguments: { task: 'feat' } },
+    { name: 'swarm_get_checks', arguments: {} },
 ];
 
 describe('swarm-mcp server', () => {
@@ -103,14 +107,21 @@ describe('swarm-mcp server', () => {
                 [
                     'swarm_check_file',
                     'swarm_check_workspace',
+                    'swarm_get_checks',
+                    'swarm_get_review',
+                    'swarm_get_spec',
                     'swarm_get_status',
+                    'swarm_get_task',
                     'swarm_reconcile_review',
                     'swarm_scan_task',
                     'swarm_validate_review_packet',
                 ].sort()
             );
             const resources = (await client.listResources()).resources.map((r) => r.uri).sort();
-            expect(resources).toEqual(['swarm://status', 'swarm://workspace']);
+            expect(resources).toEqual(['swarm://checks', 'swarm://status', 'swarm://workspace']);
+            const prompts = (await client.listPrompts()).prompts.map((p) => p.name).sort();
+            expect(prompts).toContain('swarm_before_done');
+            expect(prompts).toContain('swarm_review_assistant');
         } finally {
             await close();
         }
@@ -155,7 +166,9 @@ describe('swarm-mcp server', () => {
             };
             expect(r.isError).toBeFalsy();
             expect(r.structuredContent.ok).toBe(false);
-            expect(r.structuredContent.note).toMatch(/no live run|worktree/i);
+            // The specific not-runnable guidance, not merely the word "worktree" anywhere in the note.
+            expect(r.structuredContent.note).toMatch(/no live run to reconcile/i);
+            expect(r.structuredContent.note).toMatch(/launch the run first/i);
         } finally {
             await close();
         }
@@ -198,8 +211,10 @@ describe('swarm-mcp server', () => {
             for (const call of ALL_TOOL_CALLS) {
                 await client.callTool(call);
             }
-            expect(snapshot(root)).toBe(before); // the workspace is byte-identical after a full tool sweep
-            // non-circular: the stub drops WRITE-FLAG-SEEN iff it ever receives a write flag — it didn't.
+            expect(snapshot(root)).toBe(before); // belt-and-suspenders: workspace byte-identical after a full sweep
+            // The load-bearing, non-circular check: the stub drops a WRITE-FLAG-SEEN marker IFF it ever
+            // receives a write/mutation flag. It never appears → the adapter never passed one. (The
+            // snapshot above is weaker — the stub itself never writes — so the marker carries the real signal.)
             expect(existsSync(join(root, 'WRITE-FLAG-SEEN'))).toBe(false);
             // and no invocation ever carried a mutation flag
             const flags = invocations().flat();
@@ -257,6 +272,59 @@ describe('swarm-mcp server', () => {
                     expect(keys, `${call.name} adds no nested "${forbidden}"`).not.toContain(forbidden);
                 }
             }
+        } finally {
+            await close();
+        }
+    });
+
+    it('every id-taking tool rejects an unsafe id with isError and runs NO subprocess (the input boundary)', async () => {
+        const { client, close } = await connectClient();
+        try {
+            const unsafe = [
+                { name: 'swarm_scan_task', arguments: { task: '../etc' } },
+                { name: 'swarm_reconcile_review', arguments: { task: '../etc' } },
+                { name: 'swarm_get_task', arguments: { task: '../etc' } },
+                { name: 'swarm_get_spec', arguments: { spec: '--help' } },
+                { name: 'swarm_get_review', arguments: { task: '..' } },
+            ];
+            for (const call of unsafe) {
+                const r = (await client.callTool(call)) as { isError?: boolean };
+                expect(r.isError, `${call.name} must reject an unsafe id`).toBe(true);
+            }
+            expect(invocations(), 'no subprocess ran for any rejected id').toEqual([]);
+        } finally {
+            await close();
+        }
+    });
+
+    it('the loader tools project the parsed artifact (get_task / get_checks)', async () => {
+        const { client, close } = await connectClient();
+        try {
+            const task = (await client.callTool({ name: 'swarm_get_task', arguments: { task: 'feat' } })) as {
+                structuredContent: { ok: boolean; data: { value: { id: string } } };
+            };
+            expect(task.structuredContent.ok).toBe(true);
+            expect(task.structuredContent.data.value.id).toBe('TASK-feat');
+
+            const checks = (await client.callTool({ name: 'swarm_get_checks', arguments: {} })) as {
+                structuredContent: { data: { value: { checks: unknown[] } } };
+            };
+            expect(checks.structuredContent.data.value.checks.length).toBeGreaterThan(0);
+        } finally {
+            await close();
+        }
+    });
+
+    it('validate_review_packet also refuses a path outside the root (isError, no subprocess)', async () => {
+        const { client, close } = await connectClient();
+        try {
+            const r = (await client.callTool({
+                name: 'swarm_validate_review_packet',
+                arguments: { review: '../../../etc/passwd' },
+            })) as { isError?: boolean; content: { text: string }[] };
+            expect(r.isError).toBe(true);
+            expect(r.content[0].text).toMatch(/outside the workspace root/);
+            expect(invocations()).toEqual([]);
         } finally {
             await close();
         }

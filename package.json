@@ -15,8 +15,10 @@
         "prepack": "pnpm run build",
         "test": "vitest",
         "test:run": "vitest run",
+        "coverage": "vitest run --coverage",
         "typecheck": "tsc --noEmit",
-        "lint": "eslint --cache --cache-location node_modules/.cache/eslint/ \"src/**/*.ts\""
+        "lint": "eslint --cache --cache-location node_modules/.cache/eslint/ \"src/**/*.ts\"",
+        "gate": "pnpm run typecheck && pnpm run lint && pnpm run coverage && pnpm run build"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0",
@@ -25,6 +27,7 @@
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^3.2.6",
         "esbuild": "^0.25.0",
         "eslint": "^10.5.0",
         "typescript": "^5.7.0",

@@ -125,4 +125,70 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
             return respond(invoke_swarm(ctx.env, 'check', [safe]));
         }
     );
+
+    // --- loader tools (the parsed-artifact projections, on `swarm show … --json`) -----------------
+    server.registerTool(
+        'swarm_get_task',
+        {
+            title: 'Get a parsed task packet',
+            description: 'The task packet`s scope, affected areas, claimed changes, and frontmatter (id/source/status). Read-only.',
+            inputSchema: { task: z.string().describe('task id or stem') },
+            outputSchema: ENVELOPE_OUTPUT_SHAPE,
+            annotations: READ_ONLY,
+        },
+        ({ task }) => {
+            const stem = task_stem(task);
+            if (!is_safe_segment(stem)) {
+                return tool_error(`invalid task id/stem: ${task}`);
+            }
+            return respond(invoke_swarm(ctx.env, 'show', ['task', stem]));
+        }
+    );
+
+    server.registerTool(
+        'swarm_get_spec',
+        {
+            title: 'Get a parsed spec',
+            description: 'The spec`s frontmatter, requirements (id + line + named verify command), and sections. Read-only.',
+            inputSchema: { spec: z.string().describe('spec id (e.g. SPEC-auth)') },
+            outputSchema: ENVELOPE_OUTPUT_SHAPE,
+            annotations: READ_ONLY,
+        },
+        ({ spec }) => {
+            if (!is_safe_segment(spec)) {
+                return tool_error(`invalid spec id: ${spec}`);
+            }
+            return respond(invoke_swarm(ctx.env, 'show', ['spec', spec]));
+        }
+    );
+
+    server.registerTool(
+        'swarm_get_review',
+        {
+            title: 'Get a parsed review packet',
+            description: 'The review packet`s status, coverage rows, and verify blocks. Read-only; the verdict is the human`s.',
+            inputSchema: { task: z.string().describe('task id or stem (the review is reviews/<stem>.md)') },
+            outputSchema: ENVELOPE_OUTPUT_SHAPE,
+            annotations: READ_ONLY,
+        },
+        ({ task }) => {
+            const stem = task_stem(task);
+            if (!is_safe_segment(stem)) {
+                return tool_error(`invalid task id/stem: ${task}`);
+            }
+            return respond(invoke_swarm(ctx.env, 'show', ['review', stem]));
+        }
+    );
+
+    server.registerTool(
+        'swarm_get_checks',
+        {
+            title: 'Get the checks contract',
+            description: 'The checks contract — version + the core checks (id/name/severity). What review must satisfy.',
+            inputSchema: {},
+            outputSchema: ENVELOPE_OUTPUT_SHAPE,
+            annotations: READ_ONLY,
+        },
+        () => respond(invoke_swarm(ctx.env, 'show', ['checks']))
+    );
 }

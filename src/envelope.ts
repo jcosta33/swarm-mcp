@@ -1,4 +1,4 @@
-// The result envelope every tool returns. Two guarantees live here:
+// The result envelope every tool returns. Two invariants live here (both typed + tested):
 //   1. `noVerdictIssued: true` — a HARD, tested invariant. swarm-mcp relays the CLI's facts and may
 //      DERIVE a triage list, but it never adds a Pass/Fail/approve/merge result of its own.
 //   2. `data` is the CLI's `--json` output VERBATIM — including the CLI's own honest fields (a check's
@@ -47,10 +47,7 @@ function derive_human_attention(report: ReviewReport): string[] {
         items.push(`${c.id}: ${c.message}`);
     }
     for (const v of report.verifyBinding) {
-        const message = (v as Record<string, unknown>).message;
-        if (typeof message === 'string') {
-            items.push(message);
-        }
+        items.push(v.message); // ReviewReportSchema guarantees `message` is a string (no runtime guard needed)
     }
     for (const s of report.scopeDivergence) {
         items.push(`scope divergence: ${s}`);
@@ -140,8 +137,10 @@ export function tool_result(envelope: Envelope): {
     structuredContent: Record<string, unknown>;
 } {
     const attention = envelope.derived?.humanAttention ?? [];
+    // `ran` / `not runnable here` describes RUNNABILITY (did the CLI execute and return parseable JSON),
+    // never a review result — deliberately not "ok"/"pass", so a client cannot read the summary as a verdict.
     const summaryLines = [
-        `${envelope.source.command} → ${envelope.ok ? 'ok' : 'not runnable here'} (no verdict issued)`,
+        `${envelope.source.command} → ${envelope.ok ? 'ran' : 'not runnable here'} (no verdict issued)`,
     ];
     if (envelope.note !== undefined) {
         summaryLines.push(envelope.note);

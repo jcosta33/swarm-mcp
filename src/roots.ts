@@ -68,12 +68,16 @@ export function is_safe_segment(segment: string): boolean {
     return /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..' && !segment.startsWith('-');
 }
 
-// A git base ref legitimately contains `/`, `~`, `^`, `@`, `.` (e.g. `origin/main`, `HEAD~1`), so it is
-// NOT a single safe segment. It must only never be flag-shaped (leading `-`), empty, or carry
-// whitespace/control characters — anything else is passed through to the CLI's own `--base` guard. An
+// A git base ref legitimately contains letters, digits, and `._/~^@{}-` (e.g. `origin/main`, `HEAD~1`,
+// `HEAD^`, `v1.2.3`, `HEAD@{1}`); a commit SHA is hex. It is NOT a single safe segment (it carries `/`).
+// We OWN the safety here rather than leaning on which git subcommand the CLI runs downstream: the
+// allow-list rejects `=` and `:` and every shell / transport-option metacharacter (the `--upload-pack=`,
+// `ext::`, backtick, `$()`, `|`, `;`, `&` families), so a malicious base can never become a git option
+// or a second command even if a future code path feeds it to an option-accepting git subcommand. A
+// leading `-` is still rejected explicitly (the allow-list permits `-` mid-ref, e.g. `feature-x`). An
 // invalid base is rejected, never silently dropped (which would diff against the wrong base).
 export function is_safe_base(base: string): boolean {
-    return base.length > 0 && !base.startsWith('-') && !/\s/.test(base) && !has_control_char(base);
+    return base.length > 0 && !base.startsWith('-') && /^[A-Za-z0-9._/~^@{}-]+$/.test(base);
 }
 
 // The reviewable token for a task is its id minus a leading `TASK-`, lower-cased (mirrors the CLI's
