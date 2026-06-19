@@ -61,6 +61,9 @@ function derive_human_attention(report: ReviewReport): string[] {
     for (const f of report.selfReport.outsideScope) {
         items.push(`changed outside the task's affected areas: ${f}`);
     }
+    for (const f of report.doNotChangeTouched) {
+        items.push(`changed but the task lists it under Do not change: ${f}`);
+    }
     for (const r of report.emptyEvidencePassRows) {
         items.push(`${r}: Pass row with empty Evidence — reads Unverified`);
     }

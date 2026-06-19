@@ -101,6 +101,9 @@ export const ReviewReportSchema = z
         verifyBinding: z.array(VerifyBindingReport),
         scopeDivergence: z.array(z.string()),
         selfReport: SelfReport,
+        // Changed files matching a task's `## Do not change` entry (C014, ADR-0086) — distinct from
+        // selfReport.outsideScope; the adapter derives a human-attention item from it.
+        doNotChangeTouched: z.array(z.string()),
         emptyEvidencePassRows: z.array(z.string()),
         packetStructural: PacketStructural,
         hasReviewPacket: z.boolean(),

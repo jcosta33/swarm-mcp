@@ -57,6 +57,7 @@ if (verb === 'status') {
         verifyBinding: [{ id: 'AC-003', kind: 'cmd-mismatch', message: 'verify block cmd does not match the requirement command' }],
         scopeDivergence: [],
         selfReport: { claimedNotInDiff: [], inDiffNotClaimed: ['package-lock.json'], outsideScope: ['package-lock.json'] },
+        doNotChangeTouched: ['src/auth/token-family.ts'],
         emptyEvidencePassRows: ['AC-004'],
         packetStructural: { badResultCells: [], badStatus: null, statusPassContradicted: false, missingSections: [] },
         hasReviewPacket: true,

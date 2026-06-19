@@ -13,6 +13,7 @@ const reviewData = {
     verifyBinding: [],
     scopeDivergence: [],
     selfReport: { claimedNotInDiff: [], inDiffNotClaimed: ['package-lock.json'], outsideScope: ['package-lock.json'] },
+    doNotChangeTouched: [],
     emptyEvidencePassRows: ['AC-004'],
     packetStructural: { badResultCells: [], badStatus: null, statusPassContradicted: false, missingSections: [] },
     hasReviewPacket: true,
@@ -57,6 +58,7 @@ describe('build_envelope', () => {
             verifyBinding: [{ id: 'AC-001', kind: 'cmd-mismatch', message: 'verify cmd does not match' }],
             scopeDivergence: ['SPEC-x not in this task'],
             selfReport: { claimedNotInDiff: ['claimed.ts'], inDiffNotClaimed: ['extra.ts'], outsideScope: ['oos.ts'] },
+            doNotChangeTouched: ['frozen/rotation.ts'],
             emptyEvidencePassRows: ['AC-002'],
             packetStructural: {
                 badResultCells: ['AC-003'],
@@ -74,6 +76,7 @@ describe('build_envelope', () => {
             'claimed.ts',
             'extra.ts',
             'oos.ts',
+            'frozen/rotation.ts',
             'AC-002',
             'AC-003',
             'bogus',
