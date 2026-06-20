@@ -81,6 +81,9 @@ const SelfReport = z
         claimedNotInDiff: z.array(z.string()),
         inDiffNotClaimed: z.array(z.string()),
         outsideScope: z.array(z.string()),
+        // A prose Run summary with no machine-checkable file paths (swarm-cli #44): the inDiffNotClaimed
+        // flood is suppressed and this is surfaced once. Optional for back-compat with an older CLI.
+        runSummaryUnparsed: z.boolean().optional(),
     })
     .passthrough();
 const PacketStructural = z
