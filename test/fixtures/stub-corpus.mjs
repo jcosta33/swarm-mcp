@@ -130,7 +130,10 @@ if (verb === "status") {
         status: "ready",
         scope: ["AC-001"],
         affectedAreas: ["src"],
+        doNotChange: [],
         claimedChangedFiles: [],
+        embeddedSpecId: null,
+        embeddedRequirements: [],
       },
     });
   } else if (kind === "spec" && ref) {
@@ -146,8 +149,9 @@ if (verb === "status") {
           sources: [],
         },
         requirements: [{ id: "AC-001", line: 5, verifyCommand: "a test" }],
-        sectionTitles: ["Requirements"],
+        sectionTitles: ["Requirements", "Execution"],
         openQuestionsPresent: false,
+        execution: "- 2026-06-26 — v0 shipped.",
       },
     });
   } else if (kind === "review" && ref) {
@@ -159,6 +163,14 @@ if (verb === "status") {
         sectionTitles: ["Requirement coverage"],
         coverageRows: [{ id: "AC-001", result: "Pass", evidence: "pasted" }],
         verifyBlocks: [],
+        frontmatter: {
+          status: "needs-human",
+          spec: null,
+          task: `TASK-${ref}`,
+          pr: null,
+          reviewedSha: null,
+          evidenceHash: null,
+        },
       },
     });
   } else {

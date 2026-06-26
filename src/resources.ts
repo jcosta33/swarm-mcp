@@ -157,8 +157,8 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
         };
       }
       const safe = confine_path(ctx.root, join("findings", `${id}.md`));
-      /* v8 ignore next 3 -- defence in depth: is_safe_segment already rejects every `..`/separator/
-           flag-shaped id, so a safe segment always confines; this arm guards a non-template future caller. */
+      /* v8 ignore start -- defence in depth: is_safe_segment already rejects every `..`/separator/
+         flag-shaped id, so a safe segment always confines; this arm guards a non-template future caller. */
       if (safe === null) {
         return {
           contents: [
@@ -173,6 +173,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
           ],
         };
       }
+      /* v8 ignore stop */
       const path = join(ctx.root, safe);
       const text = existsSync(path)
         ? readFileSync(path, "utf8")

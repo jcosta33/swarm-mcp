@@ -56,6 +56,15 @@ Node ≥ 22.6 (it strips types at runtime).
 - **Tools (10).** Reconcile/check: `corpus_get_status`, `corpus_check_workspace`, `corpus_check_file`,
   `corpus_scan_task`, `corpus_reconcile_review`, `corpus_validate_review_packet`. Parsed-artifact loaders:
   `corpus_get_task`, `corpus_get_spec`, `corpus_get_review`, `corpus_get_checks`.
+  - **Aligned to the mean-and-lean ADRs (0103/0104/0107/0100).** The loaders surface the living-spec
+    surface: `get_spec` includes the append-only `## Execution` run-record (the durable history once
+    tasks/reviews are ephemeral) and the snapshot/supersededBy frontmatter; `get_review` returns the
+    identity/staleness frontmatter (which spec/task it reviews, plus the fast-track `reviewedSha`/
+    `evidenceHash` pins); `get_task` exposes the cross-root embedded spec slice. The reconcile tools
+    (`scan_task`/`reconcile_review`) take **either** a `task` **or** a `spec` (the task-less 1:1
+    review-to-spec case). `check_workspace` passes through the reconcile-only advisories the CLI emits
+    (duplicate-content, superseded-by resolution, spec-coverage-drift, promotion-or-die); the
+    snapshot-staleness / `clean` / `stamp` surfaces stay CLI-side (outside this read-only adapter).
 - **Resources (7).** Fixed: `corpus://workspace`, `corpus://status`, `corpus://checks`. Templated:
   `corpus://tasks/{id}`, `corpus://specs/{id}`, `corpus://reviews/{id}`, `corpus://findings/{id}`.
 - **Prompts (5).** `corpus_task_briefing`, `corpus_before_done` (the implementer — _may not approve its own

@@ -57,8 +57,9 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
       title: "Check one artifact file",
       description:
         "Run the Corpus checks contract over one file (spec, review, or change-plan) via `corpus check`. " +
-        "A task packet is NOT supported — `corpus check` lints it as a spec and emits spurious warnings. " +
-        "Returns diagnostics, never a verdict.",
+        "Do NOT pass a task packet: `corpus check` would lint it as a spec and emit spurious " +
+        "non-goals/open-questions/sources warnings — use corpus_scan_task to reconcile a task, or " +
+        "corpus_get_task to read it. Returns diagnostics, never a verdict.",
       inputSchema: {
         path: z
           .string()
@@ -80,6 +81,11 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
 
   // scan_task and reconcile_review are the SAME engine (`corpus review`): there is one reconcile, no
   // separate scan. scan = reconcile with no review packet present (the report carries hasReviewPacket).
+  // The single positional is EITHER a task (the slice case — `corpus review` resolves it to a task, keys
+  // coverage on the task scope, diffs the worktree) OR a spec (the task-less 1:1 review-to-spec case,
+  // ADR-0103 — coverage on the spec's full ACs, self-report from its `## Execution`). The CLI dispatches
+  // off the arg; the adapter must NOT `task_stem` a spec id (that lowercases `SPEC-x` and breaks resolution),
+  // so a `spec` is validated + passed verbatim while a `task` is normalized to its `tasks/<stem>.md` stem.
   const review_tool = (
     name: string,
     title: string,
@@ -93,7 +99,14 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         inputSchema: {
           task: z
             .string()
+            .optional()
             .describe("task id or stem (the CLI reviews `tasks/<stem>.md`)"),
+          spec: z
+            .string()
+            .optional()
+            .describe(
+              "spec id/slug for a task-less 1:1 review-to-spec reconcile (ADR-0103) — mutually exclusive with `task`",
+            ),
           base: z
             .string()
             .optional()
@@ -102,10 +115,19 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         outputSchema: ENVELOPE_OUTPUT_SHAPE,
         annotations: READ_ONLY,
       },
-      ({ task, base }) => {
-        const stem = task_stem(task);
-        if (!is_safe_segment(stem)) {
-          return tool_error(`invalid task id/stem: ${task}`);
+      ({ task, spec, base }) => {
+        // Exactly one of task/spec — the CLI takes a single positional.
+        if ((task === undefined) === (spec === undefined)) {
+          return tool_error("pass exactly one of `task` or `spec`");
+        }
+        // A spec id passes through VERBATIM (`SPEC-x` must not be lowercased); a task is normalized to its
+        // reviewable stem. Both are validated as a single safe path segment before the subprocess runs.
+        const positional =
+          spec !== undefined ? spec : task_stem(task as string);
+        if (!is_safe_segment(positional)) {
+          return tool_error(
+            `invalid ${spec !== undefined ? "spec id" : "task id/stem"}: ${spec ?? task}`,
+          );
         }
         // A base ref legitimately contains `/`/`~` (origin/main, HEAD~1) — validate it as a base,
         // and REJECT an invalid one rather than silently dropping it (which would diff against the
@@ -115,7 +137,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         }
         const baseArg = typeof base === "string" ? base : undefined;
         return respond(
-          invoke_corpus(ctx.env, "review", [stem], { base: baseArg }),
+          invoke_corpus(ctx.env, "review", [positional], { base: baseArg }),
           "review",
         );
       },
@@ -125,16 +147,18 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   review_tool(
     "corpus_scan_task",
     "Scan a task in progress (reconcile vs the diff)",
-    "Reconcile a task against its spec and the worktree diff to surface coverage gaps, out-of-scope changes, and " +
-      "self-report mismatches — before a review packet exists. Same engine as reconcile_review. Never a verdict. " +
-      'If the task has no live worktree, returns a structured "not runnable here" result, not an error.',
+    "Reconcile a task (or a spec, via `spec:` — the task-less 1:1 case) against its spec and the worktree diff to " +
+      "surface coverage gaps, out-of-scope changes, and self-report mismatches — before a review packet exists. " +
+      "Same engine as reconcile_review. Never a verdict. If there is no live worktree, returns a structured " +
+      '"not runnable here" result, not an error.',
   );
   review_tool(
     "corpus_reconcile_review",
     "Reconcile a review packet vs task/spec/diff",
-    "Reconcile a finished run: compare task, spec, review packet, and git diff. Returns coverage gaps, empty-evidence " +
-      "Pass rows, scope drift, and self-report mismatches as facts + a derived human-attention list. Never issues a " +
-      "final verdict — a human or an independent reviewer owns the result.",
+    "Reconcile a finished run: compare task (or spec, for a task-less 1:1 review-to-spec, ADR-0103), spec, review " +
+      "packet, and git diff. Returns coverage gaps, empty-evidence Pass rows, scope drift, and self-report " +
+      "mismatches as facts + a derived human-attention list. Never issues a final verdict — a human or an " +
+      "independent reviewer owns the result.",
   );
 
   server.registerTool(
@@ -172,7 +196,8 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     {
       title: "Get a parsed task packet",
       description:
-        "The task packet`s scope, affected areas, claimed changes, and frontmatter (id/source/status). Read-only.",
+        "The task packet`s scope, affected areas, claimed changes, frontmatter (id/source/status), and the " +
+        "cross-root embedded spec slice (embeddedSpecId/embeddedRequirements, ADR-0100) when present. Read-only.",
       inputSchema: { task: z.string().describe("task id or stem") },
       outputSchema: ENVELOPE_OUTPUT_SHAPE,
       annotations: READ_ONLY,
@@ -193,7 +218,9 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     {
       title: "Get a parsed spec",
       description:
-        "The spec`s frontmatter, requirements (id + line + named verify command), and sections. Read-only.",
+        "The spec`s frontmatter (incl. the living-spec snapshot/supersededBy fields), requirements (id + line + " +
+        "named verify command), sections, and the append-only `## Execution` run-record (the durable history of " +
+        "each change once tasks/reviews are ephemeral, ADR-0103/0104). Read-only.",
       inputSchema: { spec: z.string().describe("spec id (e.g. SPEC-auth)") },
       outputSchema: ENVELOPE_OUTPUT_SHAPE,
       annotations: READ_ONLY,
@@ -211,7 +238,9 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     {
       title: "Get a parsed review packet",
       description:
-        "The review packet`s status, coverage rows, and verify blocks. Read-only; the verdict is the human`s.",
+        "The review packet`s status, coverage rows, verify blocks, and identity/staleness frontmatter (which " +
+        "spec/task it reviews — `spec:` for the task-less 1:1 case — plus the fast-track reviewedSha/evidenceHash " +
+        "pins, ADR-0103/0107). Read-only; the verdict is the human`s.",
       inputSchema: {
         task: z
           .string()

@@ -146,6 +146,130 @@ export const ReviewReportSchema = z
   .passthrough();
 export type ReviewReport = z.infer<typeof ReviewReportSchema>;
 
+// --- corpus show <kind> [ref] --json  → ShowResult (showArtifact.ts) -------------------------------
+// The loader projections corpus-mcp's get_* tools surface. Same drift-tripwire intent as the schemas
+// above: a renamed/dropped field the adapter relies on trips a parse in the contract tests. Each is the
+// uniform `{ level: 'clean', kind, value }` envelope (show never warns; a lookup failure is exit 2).
+const showEnvelope = <T extends z.ZodTypeAny>(kind: string, value: T) =>
+  z
+    .object({ level: z.literal("clean"), kind: z.literal(kind), value })
+    .passthrough();
+
+// corpus show checks → the contract version + the core checks (id/name/severity).
+export const ShowChecksSchema = showEnvelope(
+  "checks",
+  z
+    .object({
+      version: z.string(),
+      checks: z.array(
+        z
+          .object({ id: z.string(), name: z.string(), severity: CheckSeverity })
+          .passthrough(),
+      ),
+    })
+    .passthrough(),
+);
+export type ShowChecks = z.infer<typeof ShowChecksSchema>;
+
+// corpus show task → the task packet's frontmatter + scope/areas + the ADR-0100 cross-root embedded slice.
+export const ShowTaskSchema = showEnvelope(
+  "task",
+  z
+    .object({
+      id: z.string().nullable(),
+      source: z.string().nullable(),
+      status: z.string().nullable(),
+      scope: z.array(z.string()),
+      affectedAreas: z.array(z.string()),
+      doNotChange: z.array(z.string()),
+      claimedChangedFiles: z.array(z.string()),
+      // The embedded `## Spec snapshot` slice — null id + [] for the co-located case (ADR-0100).
+      embeddedSpecId: z.string().nullable(),
+      embeddedRequirements: z.array(
+        z
+          .object({ id: z.string(), verifyCommand: z.string().nullable() })
+          .passthrough(),
+      ),
+    })
+    .passthrough(),
+);
+export type ShowTask = z.infer<typeof ShowTaskSchema>;
+
+// corpus show spec → frontmatter (incl. the additive living-spec fields), requirements, and the
+// append-only `## Execution` run-record (ADR-0103/0104 — the durable record once tasks are ephemeral).
+export const ShowSpecSchema = showEnvelope(
+  "spec",
+  z
+    .object({
+      frontmatter: z
+        .object({
+          type: z.string(),
+          id: z.string(),
+          status: z.string(),
+          // ADR-0108 living-spec additions; nullable/optional so an older spec without them still parses.
+          supersededBy: z.string().nullable().optional(),
+          snapshot: z.string().nullable().optional(),
+        })
+        .passthrough(),
+      requirements: z.array(
+        z
+          .object({
+            id: z.string(),
+            line: z.number(),
+            verifyCommand: z.string().nullable(),
+          })
+          .passthrough(),
+      ),
+      sectionTitles: z.array(z.string()),
+      openQuestionsPresent: z.boolean(),
+      execution: z.string().nullable(),
+    })
+    .passthrough(),
+);
+export type ShowSpec = z.infer<typeof ShowSpecSchema>;
+
+// corpus show review → the parsed packet PLUS the identity/staleness frontmatter projection: which
+// spec/task it reviews (review-to-spec `spec:`, ADR-0103) and the fast-track pins (ADR-0107).
+export const ShowReviewSchema = showEnvelope(
+  "review",
+  z
+    .object({
+      status: z.string().nullable(),
+      sectionTitles: z.array(z.string()),
+      coverageRows: z.array(
+        z
+          .object({
+            id: z.string(),
+            result: z.string(),
+            evidence: z.string(),
+          })
+          .passthrough(),
+      ),
+      verifyBlocks: z.array(
+        z
+          .object({
+            id: z.string().nullable(),
+            cmd: z.string().nullable(),
+            result: z.enum(["pass", "fail"]).nullable(),
+            malformed: z.boolean(),
+          })
+          .passthrough(),
+      ),
+      frontmatter: z
+        .object({
+          status: z.string().nullable(),
+          spec: z.string().nullable(),
+          task: z.string().nullable(),
+          pr: z.string().nullable(),
+          reviewedSha: z.string().nullable(),
+          evidenceHash: z.string().nullable(),
+        })
+        .passthrough(),
+    })
+    .passthrough(),
+);
+export type ShowReview = z.infer<typeof ShowReviewSchema>;
+
 // The CLI's structured-error stdout body (unixOutcome.ts `emit_error`): `{error, message}` + exit 2.
 export const CorpusErrorSchema = z
   .object({ error: z.string(), message: z.string() })

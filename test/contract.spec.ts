@@ -9,6 +9,10 @@ import {
   WorkspaceCheckSchema,
   FileCheckSchema,
   ReviewReportSchema,
+  ShowChecksSchema,
+  ShowTaskSchema,
+  ShowSpecSchema,
+  ShowReviewSchema,
   CorpusErrorSchema,
 } from "../src/corpus/contract.ts";
 
@@ -60,6 +64,46 @@ describe("the contract matches the real --json shapes (captured fixtures)", () =
   it("review --json → ReviewReport (the consumed shape)", () => {
     const parsed = ReviewReportSchema.safeParse(fixture("review-report.json"));
     expect(parsed.success).toBe(true);
+  });
+
+  it("show checks --json → ShowChecks", () => {
+    expect(ShowChecksSchema.safeParse(fixture("show-checks.json")).success).toBe(
+      true,
+    );
+  });
+
+  it("show task --json → ShowTask (incl. the cross-root embedded slice fields)", () => {
+    const parsed = ShowTaskSchema.safeParse(fixture("show-task.json"));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("embeddedSpecId" in parsed.data.value).toBe(true);
+      expect(Array.isArray(parsed.data.value.embeddedRequirements)).toBe(true);
+    }
+  });
+
+  it("show spec --json → ShowSpec (incl. the `## Execution` run-record field)", () => {
+    const parsed = ShowSpecSchema.safeParse(fixture("show-spec.json"));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("execution" in parsed.data.value).toBe(true);
+    }
+  });
+
+  it("show review --json → ShowReview (incl. the identity/staleness frontmatter)", () => {
+    const parsed = ShowReviewSchema.safeParse(fixture("show-review.json"));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("reviewedSha" in parsed.data.value.frontmatter).toBe(true);
+      expect("evidenceHash" in parsed.data.value.frontmatter).toBe(true);
+    }
+  });
+
+  it("the show tripwire FAILS if review frontmatter drops a staleness pin (evidenceHash)", () => {
+    const drifted = JSON.parse(
+      readFileSync(join(here, "fixtures", "show-review.json"), "utf8"),
+    );
+    delete drifted.value.frontmatter.evidenceHash;
+    expect(ShowReviewSchema.safeParse(drifted).success).toBe(false);
   });
 
   it("the structured error body parses", () => {
@@ -142,5 +186,20 @@ describe("the test stub conforms to the SAME contract as the real captured outpu
     // coverage message must carry the same `(uncovered)` kind suffix the real CLI single-sources.
     expect(stub.coverage[0].message).toMatch(/\(uncovered\)$/);
     expect(real.coverage[0].message).toMatch(/\(uncovered\)$/);
+  });
+
+  it("stub show checks/task/spec/review output parses against the Show schemas", () => {
+    expect(ShowChecksSchema.safeParse(runStub(["show", "checks"])).success).toBe(
+      true,
+    );
+    expect(
+      ShowTaskSchema.safeParse(runStub(["show", "task", "feat"])).success,
+    ).toBe(true);
+    expect(
+      ShowSpecSchema.safeParse(runStub(["show", "spec", "SPEC-feat"])).success,
+    ).toBe(true);
+    expect(
+      ShowReviewSchema.safeParse(runStub(["show", "review", "feat"])).success,
+    ).toBe(true);
   });
 });

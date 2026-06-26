@@ -231,6 +231,50 @@ describe("corpus-mcp server", () => {
     }
   });
 
+  it("reconcile_review accepts a `spec` id for the task-less 1:1 review-to-spec case, passed VERBATIM", async () => {
+    const { client, close } = await connectClient();
+    try {
+      const r = (await client.callTool({
+        name: "corpus_reconcile_review",
+        arguments: { spec: "SPEC-feat" },
+      })) as { isError?: boolean; structuredContent: { ok: boolean } };
+      expect(r.isError).toBeFalsy();
+      // The CLI receives the spec id VERBATIM — never lowercased/stripped by task_stem (which would
+      // turn `SPEC-feat` into `spec-feat` and break resolution).
+      const reviewCall = invocations().find((argv) => argv[0] === "review");
+      expect(reviewCall).toContain("SPEC-feat");
+    } finally {
+      await close();
+    }
+  });
+
+  it("a review tool rejects passing neither task nor spec, and passing both (exactly one)", async () => {
+    const { client, close } = await connectClient();
+    try {
+      const neither = (await client.callTool({
+        name: "corpus_reconcile_review",
+        arguments: {},
+      })) as { isError?: boolean; content: { text: string }[] };
+      expect(neither.isError).toBe(true);
+      expect(neither.content[0].text).toMatch(/exactly one of/i);
+      const both = (await client.callTool({
+        name: "corpus_scan_task",
+        arguments: { task: "feat", spec: "SPEC-feat" },
+      })) as { isError?: boolean; content: { text: string }[] };
+      expect(both.isError).toBe(true);
+      expect(both.content[0].text).toMatch(/exactly one of/i);
+      // An invalid spec id (a separator) is rejected as a spec id — not stemmed, not run.
+      const badSpec = (await client.callTool({
+        name: "corpus_reconcile_review",
+        arguments: { spec: "a/b" },
+      })) as { isError?: boolean; content: { text: string }[] };
+      expect(badSpec.isError).toBe(true);
+      expect(badSpec.content[0].text).toMatch(/invalid spec id/i);
+    } finally {
+      await close();
+    }
+  });
+
   it("rejects a path outside the root with isError and runs NO subprocess", async () => {
     const { client, close } = await connectClient();
     try {
