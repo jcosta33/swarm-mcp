@@ -20,7 +20,7 @@ function as_array(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-// corpus status → the board: spec ids/status + a task summary, plus the two headline triage lists.
+// suspec status → the board: spec ids/status + a task summary, plus the two headline triage lists.
 // Drops nothing structural; collapses each task to {id, reviewStatus} (the fields an agent acts on).
 export function slice_status(data: unknown): unknown {
   const board = as_obj(data);
@@ -45,7 +45,7 @@ export function slice_status(data: unknown): unknown {
   };
 }
 
-// corpus check <file> → keep the outcome + the diagnostics' actionable triple (code/severity/message);
+// suspec check <file> → keep the outcome + the diagnostics' actionable triple (code/severity/message);
 // drop the path echo and line numbers (the detailed payload carries them).
 export function slice_file_check(data: unknown): unknown {
   const check = as_obj(data);
@@ -65,7 +65,7 @@ export function slice_file_check(data: unknown): unknown {
   };
 }
 
-// corpus check (workspace) → the verdict + ONLY the artifacts that carry a diagnostic or a finding (the
+// suspec check (workspace) → the verdict + ONLY the artifacts that carry a diagnostic or a finding (the
 // clean ones are noise in concise mode). Each problem artifact keeps its path + diagnostic triples.
 export function slice_workspace_check(data: unknown): unknown {
   const check = as_obj(data);
@@ -99,7 +99,7 @@ export function slice_workspace_check(data: unknown): unknown {
   };
 }
 
-// corpus show task → the scope-bearing identity slice; drops doNotChange / claimedChangedFiles and the
+// suspec show task → the scope-bearing identity slice; drops doNotChange / claimedChangedFiles and the
 // embedded requirements' verify commands (the detailed payload carries them).
 export function slice_show_task(data: unknown): unknown {
   const env = as_obj(data);
@@ -120,7 +120,7 @@ export function slice_show_task(data: unknown): unknown {
   };
 }
 
-// corpus show spec → the id/status + requirement IDS + section titles; drops the big append-only
+// suspec show spec → the id/status + requirement IDS + section titles; drops the big append-only
 // `## Execution` prose body, the per-requirement line numbers + verify commands, and the verbose
 // living-spec frontmatter (kept whole in detailed mode).
 export function slice_show_spec(data: unknown): unknown {
@@ -145,7 +145,7 @@ export function slice_show_spec(data: unknown): unknown {
   };
 }
 
-// corpus show review → status + each coverage row's {id, result} (drops the evidence prose), the verify
+// suspec show review → status + each coverage row's {id, result} (drops the evidence prose), the verify
 // blocks' pass/fail summary, and the identity (which spec/task it reviews); drops the staleness pins.
 export function slice_show_review(data: unknown): unknown {
   const env = as_obj(data);
@@ -171,8 +171,8 @@ export function slice_show_review(data: unknown): unknown {
   };
 }
 
-// Project the board (corpus status) into a FLAT enumeration of specs or tasks (AC-012). There is no
-// `corpus list` verb; the board is the enumeration source, so corpus_list projects it. Defensive: reads
+// Project the board (suspec status) into a FLAT enumeration of specs or tasks (AC-012). There is no
+// `suspec list` verb; the board is the enumeration source, so suspec_list projects it. Defensive: reads
 // only known fields, falls back to the verbatim board if the shape is unrecognised (the contract tripwire
 // owns drift). Adds no field of its own and no verdict.
 export function list_from_board(
@@ -210,7 +210,7 @@ export function list_from_board(
   return { kind: "tasks", tasks };
 }
 
-// corpus show checks → version + each check's {id, severity}; drops the human-readable `name`.
+// suspec show checks → version + each check's {id, severity}; drops the human-readable `name`.
 export function slice_show_checks(data: unknown): unknown {
   const env = as_obj(data);
   const value = as_obj(env?.value);

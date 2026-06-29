@@ -1,8 +1,8 @@
-// The Corpus MCP tool surface. Three tiers, all routed through the no-verdict envelope:
+// The Suspec MCP tool surface. Three tiers, all routed through the no-verdict envelope:
 //   • READ — status / list / check / show-loader projections over the CLI's read `--json` (status, check,
 //     show). Each declares an outputSchema and takes a `response_format` (concise|detailed, AC-013):
 //     concise returns the relevant slice, detailed the verbatim payload.
-//   • RECONCILE — the single `corpus_reconcile` (AC-007): one engine (`corpus review`), one tool. The
+//   • RECONCILE — the single `suspec_reconcile` (AC-007): one engine (`suspec review`), one tool. The
 //     scan-vs-reconcile distinction is data-driven (`report.hasReviewPacket`), not two tools; the
 //     implementer-vs-reviewer STANCE split lives in the prompts (prompts.ts), not here.
 //   • SAFE-WRITE — the verdict-free prepare tier (AC-009 / ADR-0077 D8): scaffold_spec / split_task /
@@ -13,7 +13,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { type CorpusEnv, invoke_corpus } from "./corpus/invoke.ts";
+import { type SuspecEnv, invoke_suspec } from "./suspec/invoke.ts";
 import {
   confine_path,
   is_safe_segment,
@@ -32,7 +32,7 @@ import {
   list_from_board,
 } from "./slices.ts";
 
-export type Ctx = Readonly<{ env: CorpusEnv; root: string }>;
+export type Ctx = Readonly<{ env: SuspecEnv; root: string }>;
 
 const READ_ONLY = {
   readOnlyHint: true,
@@ -69,9 +69,9 @@ const resolve_format = (value: Format | undefined): Format => value ?? "concise"
 export function register_tools(server: McpServer, ctx: Ctx): void {
   // --- READ tier -----------------------------------------------------------------------------------
   server.registerTool(
-    "corpus_get_status",
+    "suspec_get_status",
     {
-      title: "Corpus workspace board",
+      title: "Suspec workspace board",
       description:
         "The derived workspace board — specs, their tasks, and review status. Read-only; no verdict. " +
         "concise returns spec/task ids + review status + the triage lists; detailed the full board.",
@@ -81,18 +81,18 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     },
     ({ response_format }) => {
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "status"), "plain", {
+      return respond(invoke_suspec(ctx.env, "status"), "plain", {
         format,
         slice: slice_status,
       });
     },
   );
 
-  // Enumeration (AC-012): an agent without an id can list specs / tasks. There is no `corpus list` verb;
-  // the board (`corpus status --json`) IS the enumeration source, so `corpus_list` projects it through a
+  // Enumeration (AC-012): an agent without an id can list specs / tasks. There is no `suspec list` verb;
+  // the board (`suspec status --json`) IS the enumeration source, so `suspec_list` projects it through a
   // `kind` filter. specs → the spec ids + status; tasks → every task across all specs + its review status.
   server.registerTool(
-    "corpus_list",
+    "suspec_list",
     {
       title: "List specs or tasks",
       description:
@@ -110,7 +110,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     },
     ({ kind, response_format }) => {
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "status"), "plain", {
+      return respond(invoke_suspec(ctx.env, "status"), "plain", {
         format,
         slice: (data) => list_from_board(data, kind),
       });
@@ -118,11 +118,11 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   server.registerTool(
-    "corpus_check_workspace",
+    "suspec_check_workspace",
     {
       title: "Check the whole workspace",
       description:
-        "Run the Corpus checks contract over every spec + change plan. Returns diagnostics, never a " +
+        "Run the Suspec checks contract over every spec + change plan. Returns diagnostics, never a " +
         "verdict. concise returns only the artifacts that carry a diagnostic; detailed every result.",
       inputSchema: { ...responseFormatInput },
       outputSchema: ENVELOPE_OUTPUT_SHAPE,
@@ -130,7 +130,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     },
     ({ response_format }) => {
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "check"), "plain", {
+      return respond(invoke_suspec(ctx.env, "check"), "plain", {
         format,
         slice: slice_workspace_check,
       });
@@ -138,20 +138,20 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   // check_file is the ONE file-check path (AC-008): the former `validate_review_packet` was a thin alias
-  // of this same `corpus check <file>` verb (a strict subset of reconcile), so it is dropped. A review
-  // packet IS a valid input here — `corpus check` runs the review-file checks (C012 coverage, C013
+  // of this same `suspec check <file>` verb (a strict subset of reconcile), so it is dropped. A review
+  // packet IS a valid input here — `suspec check` runs the review-file checks (C012 coverage, C013
   // verify-evidence) on it — but a clean result is NOT a full packet validation: the diff-aware facts
-  // (out-of-scope, self-report, empty-evidence) come only from corpus_reconcile when a worktree exists.
+  // (out-of-scope, self-report, empty-evidence) come only from suspec_reconcile when a worktree exists.
   server.registerTool(
-    "corpus_check_file",
+    "suspec_check_file",
     {
       title: "Check one artifact file (spec, review, or change-plan)",
       description:
-        "Run the Corpus checks contract over one file via `corpus check`. Accepts a spec, a change-plan, " +
+        "Run the Suspec checks contract over one file via `suspec check`. Accepts a spec, a change-plan, " +
         "or a REVIEW packet (it runs the review-file checks C012/C013 on a review — a clean result here is " +
-        "NOT full validation; the diff-aware facts come from corpus_reconcile). Do NOT pass a TASK packet: " +
-        "`corpus check` would lint it as a spec and emit spurious warnings — use corpus_reconcile to " +
-        "reconcile a task or corpus_get_task to read it. Returns diagnostics, never a verdict.",
+        "NOT full validation; the diff-aware facts come from suspec_reconcile). Do NOT pass a TASK packet: " +
+        "`suspec check` would lint it as a spec and emit spurious warnings — use suspec_reconcile to " +
+        "reconcile a task or suspec_get_task to read it. Returns diagnostics, never a verdict.",
       inputSchema: {
         path: z
           .string()
@@ -169,7 +169,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         );
       }
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "check", [safe]), "plain", {
+      return respond(invoke_suspec(ctx.env, "check", [safe]), "plain", {
         format,
         slice: slice_file_check,
       });
@@ -178,13 +178,13 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
 
   // --- RECONCILE tier ------------------------------------------------------------------------------
   // The single positional (see the module header for why scan-vs-reconcile is data, not two tools)
-  // is EITHER a task (`corpus review` resolves it to a task, keys coverage on the task scope, diffs the
+  // is EITHER a task (`suspec review` resolves it to a task, keys coverage on the task scope, diffs the
   // worktree) OR a spec (the task-less 1:1 review-to-spec case, ADR-0103 — coverage on the spec's full
   // ACs, self-report from its `## Execution`). The CLI dispatches off the arg; the adapter must NOT
   // `task_stem` a spec id (that lowercases `SPEC-x` and breaks resolution), so a `spec` is validated +
   // passed verbatim while a `task` is normalized to its `tasks/<stem>.md` stem.
   server.registerTool(
-    "corpus_reconcile",
+    "suspec_reconcile",
     {
       title: "Reconcile a run vs its spec/task and the diff (no verdict)",
       description:
@@ -234,15 +234,15 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
       }
       const baseArg = typeof base === "string" ? base : undefined;
       return respond(
-        invoke_corpus(ctx.env, "review", [positional], { base: baseArg }),
+        invoke_suspec(ctx.env, "review", [positional], { base: baseArg }),
         "review",
       );
     },
   );
 
-  // --- loader tools (the parsed-artifact projections, on `corpus show … --json`) -------------------
+  // --- loader tools (the parsed-artifact projections, on `suspec show … --json`) -------------------
   server.registerTool(
-    "corpus_get_task",
+    "suspec_get_task",
     {
       title: "Get a parsed task packet",
       description:
@@ -257,14 +257,14 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
       annotations: READ_ONLY,
     },
     ({ task, response_format }) => {
-      // Pass the id/slug through unchanged: `corpus show task` resolves either `pastebin` or
+      // Pass the id/slug through unchanged: `suspec show task` resolves either `pastebin` or
       // `TASK-pastebin` to the canonical tasks/TASK-<slug>.md, so pre-stripping the prefix (which
-      // mismatched the file `corpus new task` writes) is both unnecessary and wrong.
+      // mismatched the file `suspec new task` writes) is both unnecessary and wrong.
       if (!is_safe_segment(task)) {
         return tool_error(`invalid task id/stem: ${task}`);
       }
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "show", ["task", task]), "plain", {
+      return respond(invoke_suspec(ctx.env, "show", ["task", task]), "plain", {
         format,
         slice: slice_show_task,
       });
@@ -272,7 +272,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   server.registerTool(
-    "corpus_get_spec",
+    "suspec_get_spec",
     {
       title: "Get a parsed spec",
       description:
@@ -292,7 +292,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         return tool_error(`invalid spec id: ${spec}`);
       }
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "show", ["spec", spec]), "plain", {
+      return respond(invoke_suspec(ctx.env, "show", ["spec", spec]), "plain", {
         format,
         slice: slice_show_spec,
       });
@@ -300,7 +300,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   server.registerTool(
-    "corpus_get_review",
+    "suspec_get_review",
     {
       title: "Get a parsed review packet",
       description:
@@ -324,7 +324,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
         return tool_error(`invalid task id/stem: ${task}`);
       }
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "show", ["review", stem]), "plain", {
+      return respond(invoke_suspec(ctx.env, "show", ["review", stem]), "plain", {
         format,
         slice: slice_show_review,
       });
@@ -332,7 +332,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   server.registerTool(
-    "corpus_get_checks",
+    "suspec_get_checks",
     {
       title: "Get the checks contract",
       description:
@@ -344,7 +344,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
     },
     ({ response_format }) => {
       const format = resolve_format(response_format);
-      return respond(invoke_corpus(ctx.env, "show", ["checks"]), "plain", {
+      return respond(invoke_suspec(ctx.env, "show", ["checks"]), "plain", {
         format,
         slice: slice_show_checks,
       });
@@ -361,12 +361,12 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
 // validated as a single safe path segment before the subprocess runs.
 function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
   server.registerTool(
-    "corpus_scaffold_spec",
+    "suspec_scaffold_spec",
     {
       title: "Scaffold a fresh draft spec (prepare op — no verdict)",
       description:
         "VERDICT-FREE PREPARE OP: scaffold a fresh draft `specs/<slug>/spec.md` from the kit " +
-        "template via `corpus new spec`. Creates the skeleton for an author to fill; it never overwrites an " +
+        "template via `suspec new spec`. Creates the skeleton for an author to fill; it never overwrites an " +
         "existing spec. Returns the created path + spec id.",
       inputSchema: {
         slug: z
@@ -382,16 +382,16 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       if (!is_safe_segment(slug)) {
         return tool_error(`invalid spec slug: ${slug}`);
       }
-      return respond(invoke_corpus(ctx.env, "new", ["spec", slug]));
+      return respond(invoke_suspec(ctx.env, "new", ["spec", slug]));
     },
   );
 
   server.registerTool(
-    "corpus_split_task",
+    "suspec_split_task",
     {
       title: "Split a spec into a task slice (prepare op — no verdict)",
       description:
-        "VERDICT-FREE PREPARE OP: cut a task packet from a named spec via `corpus new task " +
+        "VERDICT-FREE PREPARE OP: cut a task packet from a named spec via `suspec new task " +
         "--from <SPEC>`, copying the named requirement ids into its Scope (scope is COPIED, never invented). " +
         "Use when one spec fans out into parallel slices — 1:1 work needs no task. It never overwrites an " +
         "existing packet. Returns the created path + task id + scope.",
@@ -425,19 +425,19 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       if (scopeIds.length > 0) {
         flags["--scope"] = scopeIds.join(",");
       }
-      return respond(invoke_corpus(ctx.env, "new", ["task"], { flags }));
+      return respond(invoke_suspec(ctx.env, "new", ["task"], { flags }));
     },
   );
 
   server.registerTool(
-    "corpus_scaffold_finding",
+    "suspec_scaffold_finding",
     {
       title: "Scaffold a candidate finding (prepare op — no verdict)",
       description:
         "VERDICT-FREE PREPARE OP: scaffold ONE candidate `findings/<slug>.md` from a finished " +
-        "task/review id via `corpus promote`, pre-filling `from:` and leaving the what-we-learned body a " +
+        "task/review id via `suspec promote`, pre-filling `from:` and leaving the what-we-learned body a " +
         "placeholder. It asserts NO learning of its own (status: candidate, never accepted) — acceptance is " +
-        "the owner's. Backs the corpus_finding_candidate prompt. It never overwrites an existing finding. " +
+        "the owner's. Backs the suspec_finding_candidate prompt. It never overwrites an existing finding. " +
         "Returns the created path + slug.",
       inputSchema: {
         from: z
@@ -453,7 +453,7 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       if (!is_safe_segment(from)) {
         return tool_error(`invalid task/review id: ${from}`);
       }
-      return respond(invoke_corpus(ctx.env, "promote", [from]));
+      return respond(invoke_suspec(ctx.env, "promote", [from]));
     },
   );
 }

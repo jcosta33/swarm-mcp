@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Launcher for the Corpus MCP stdio server. Dev checkout runs the TypeScript source directly via Node's
+// Launcher for the Suspec MCP stdio server. Dev checkout runs the TypeScript source directly via Node's
 // native type stripping (no build step, Node >= 22.6); a published install runs the bundled dist. The
 // server speaks the MCP protocol over stdio, so this inherits stdio and forwards signals.
 import { spawnSync } from "node:child_process";
@@ -17,7 +17,7 @@ if (existsSync(sourceEntry)) {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 6)) {
     console.error(
-      "Error: running corpus-mcp from source needs Node.js >= 22.6 (or run `pnpm build`).",
+      "Error: running suspec-mcp from source needs Node.js >= 22.6 (or run `pnpm build`).",
     );
     console.error(`Current version: ${process.versions.node}`);
     process.exit(1);

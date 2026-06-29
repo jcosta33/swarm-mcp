@@ -1,6 +1,6 @@
 // Root-confinement for a shell-out adapter. Three untrusted inputs reach the CLI: a file PATH (for
 // check_file / file resources), a task STEM / spec id (for review / show), and a git BASE ref. All are
-// validated here before any subprocess runs, so a malicious client cannot make `corpus` read outside the
+// validated here before any subprocess runs, so a malicious client cannot make `suspec` read outside the
 // workspace, inject a flag, or break the spawn.
 
 import { resolve, isAbsolute, relative, dirname } from "node:path";
@@ -24,7 +24,7 @@ export function resolve_root(root: string): string {
 }
 
 // Validate a client-supplied path resolves INSIDE the workspace root; return it workspace-RELATIVE
-// (safe to pass to a `corpus` invoked with cwd=root), or null if it escapes. Rejects: control chars (a
+// (safe to pass to a `suspec` invoked with cwd=root), or null if it escapes. Rejects: control chars (a
 // NUL byte breaks spawn), `..` traversal, absolute escapes, the root itself (not a file), flag-shaped
 // paths, and symlink escapes — including a symlinked PARENT directory even when the leaf does not exist
 // yet (so the guard is correct for the loader and safe-write verbs, not only the read verb whose

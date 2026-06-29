@@ -16,20 +16,20 @@ function user_text(text: string): {
 
 export function register_prompts(server: McpServer): void {
   server.registerPrompt(
-    "corpus_task_briefing",
+    "suspec_task_briefing",
     {
-      title: "Brief an agent on a Corpus task",
+      title: "Brief an agent on a Suspec task",
       description:
         "Prepare to work on a task: read its scope, do-not-change list, verify items, and open questions first.",
       argsSchema: { task: z.string() },
     },
     ({ task }) =>
       user_text(
-        `You are about to work on Corpus task ${task}.\n\n` +
+        `You are about to work on Suspec task ${task}.\n\n` +
           `First call:\n` +
-          `- corpus_get_task (its scope, affected areas, verify items)\n` +
-          `- corpus_get_spec for every linked spec\n` +
-          `- corpus_get_checks (what review will hold the work to)\n\n` +
+          `- suspec_get_task (its scope, affected areas, verify items)\n` +
+          `- suspec_get_spec for every linked spec\n` +
+          `- suspec_get_checks (what review will hold the work to)\n\n` +
           `Then summarize the scope, the do-not-change list, the verify items, and any open questions.\n` +
           `Do not edit code until the scope is confirmed. Do not implement behavior outside scope. If the ` +
           `task is unclear, ask before proceeding.`,
@@ -37,7 +37,7 @@ export function register_prompts(server: McpServer): void {
   );
 
   server.registerPrompt(
-    "corpus_before_done",
+    "suspec_before_done",
     {
       title: "Implementer self-check before claiming ready",
       description:
@@ -47,8 +47,8 @@ export function register_prompts(server: McpServer): void {
     ({ task }) =>
       user_text(
         `Before you claim ${task} is ready for review:\n\n` +
-          `1. Call corpus_reconcile (it reconciles against the diff whether or not a review packet exists yet).\n` +
-          `2. Call corpus_check_file on the review packet if one exists (the C012/C013 review-file checks).\n` +
+          `1. Call suspec_reconcile (it reconciles against the diff whether or not a review packet exists yet).\n` +
+          `2. Call suspec_check_file on the review packet if one exists (the C012/C013 review-file checks).\n` +
           `3. Fix or report every coverage gap, out-of-scope change, and empty-evidence Pass row it surfaces.\n` +
           `4. Leave a run summary: changed files, the verify output, out-of-scope edits, candidate findings.\n\n` +
           `You MAY say the work is "ready for review."\n` +
@@ -58,7 +58,7 @@ export function register_prompts(server: McpServer): void {
   );
 
   server.registerPrompt(
-    "corpus_review_assistant",
+    "suspec_review_assistant",
     {
       title: "Independent reviewer assistant (refute-by-default)",
       description:
@@ -68,7 +68,7 @@ export function register_prompts(server: McpServer): void {
     ({ task }) =>
       user_text(
         `You are reviewing work on ${task} that you did NOT author.\n\n` +
-          `Call corpus_get_task, corpus_get_spec, and corpus_reconcile and RE-DERIVE the facts yourself. A clean ` +
+          `Call suspec_get_task, suspec_get_spec, and suspec_reconcile and RE-DERIVE the facts yourself. A clean ` +
           `reconcile from the implementer is a starting point to falsify, not a result to trust — the implementer ` +
           `may have pre-fixed the mechanical drift; verify, do not assume.\n\n` +
           `Every Pass row must cite evidence; an empty Evidence cell is Unverified. Route exceptions to Human ` +
@@ -77,7 +77,7 @@ export function register_prompts(server: McpServer): void {
   );
 
   server.registerPrompt(
-    "corpus_evidence_rule",
+    "suspec_evidence_rule",
     {
       title: "The evidence rule",
       description:
@@ -88,12 +88,12 @@ export function register_prompts(server: McpServer): void {
         `A claim is not evidence.\n\n` +
           `A Pass row requires one of: pasted command output, a CI link, or a named human's recorded ` +
           `observation (for a manual check). An empty Evidence cell is Unverified, never Pass.\n\n` +
-          `corpus-mcp surfaces facts; it issues no verdict. The human or the independent reviewer decides.`,
+          `suspec-mcp surfaces facts; it issues no verdict. The human or the independent reviewer decides.`,
       ),
   );
 
   server.registerPrompt(
-    "corpus_finding_candidate",
+    "suspec_finding_candidate",
     {
       title: "Draft a candidate finding",
       description:
@@ -102,7 +102,7 @@ export function register_prompts(server: McpServer): void {
     () =>
       user_text(
         `Draft a candidate finding from the durable fact you discovered:\n\n` +
-          `1. Call corpus_scaffold_finding (from: the finished task/review id) to create the ` +
+          `1. Call suspec_scaffold_finding (from: the finished task/review id) to create the ` +
           `findings/<slug>.md skeleton — a verdict-free prepare op (it pre-fills \`from:\`, asserts no ` +
           `learning, writes no board).\n` +
           `2. Fill what we learned: one claim, the evidence for it, where it applies, where it does NOT apply, ` +

@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-// corpus-mcp's gate mirrors corpus-cli's rigor: near-100% coverage, enforced. statements/lines/functions
+// suspec-mcp's gate mirrors suspec-cli's rigor: near-100% coverage, enforced. statements/lines/functions
 // sit at 100; branches at ~97.08 (as of the read+reconcile+safe-write surface). The thresholds (99/95/100/
 // 99) sit a hair below so the gate has teeth — a regression that drops a tested path trips it — without
 // being gamed up to a round 100. Branches is the tightest (95 vs ~97) precisely because that is where the
@@ -9,7 +9,7 @@ import { defineConfig } from "vitest/config";
 // The uncovered branches are I/O FALLBACKS + defensive null-coalesce arms, left uncovered deliberately
 // (exercising them would need spawn-mocking or a timed signal-kill — coverage theatre, not signal), NOT
 // untested behaviour. Line numbers drift with edits; the SHAPES are:
-//   • src/corpus/invoke.ts — `caught instanceof Error ? … : String(caught)` (spawnSync throws only Error
+//   • src/suspec/invoke.ts — `caught instanceof Error ? … : String(caught)` (spawnSync throws only Error
 //     subclasses, so the String() arm is a belt; the Error arm IS tested via the NUL-byte throw test), and
 //     `result.status ?? 1` / `result.stdout ?? ''` / `result.stderr ?? ''`: under `encoding: 'utf8'` the
 //     streams are always strings and a normally-exiting child carries a numeric status; status is null only

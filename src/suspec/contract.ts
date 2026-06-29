@@ -1,13 +1,13 @@
-// zod schemas mirroring the corpus CLI's real `--json` shapes (verified against the binary). These are
-// the DRIFT TRIPWIRE: corpus-mcp parses every CLI payload through them, so if corpus-cli renames or drops
-// a field corpus-mcp consumes (e.g. ReviewReport.coverage), the parse fails loudly in a test rather than
+// zod schemas mirroring the suspec CLI's real `--json` shapes (verified against the binary). These are
+// the DRIFT TRIPWIRE: suspec-mcp parses every CLI payload through them, so if suspec-cli renames or drops
+// a field suspec-mcp consumes (e.g. ReviewReport.coverage), the parse fails loudly in a test rather than
 // silently producing wrong tool output. `.passthrough()` keeps unknown extra fields (additive CLI
-// changes don't break us); the named fields are the ones corpus-mcp actually reads.
+// changes don't break us); the named fields are the ones suspec-mcp actually reads.
 //
 // ENUM POLICY (AC-011, audit F7): a field is modelled as a CLOSED `z.enum` ONLY when the adapter BRANCHES
 // on its exact value-set — so a new/renamed value the adapter cannot interpret trips the wire. A field the
 // adapter only PASSES THROUGH (surfaces in `data` / a concise slice, never switches on) is modelled as
-// `z.string()`: a benign additive CLI enum value must NOT convert into a corpus-mcp break for no consumer
+// `z.string()`: a benign additive CLI enum value must NOT convert into a suspec-mcp break for no consumer
 // benefit. The only payload enum the adapter branches on is `ReviewReport.level` (`=== "blocking"` scales
 // the derived human-attention severity), so OutcomeLevel stays closed; every diagnostic `code`/`kind`/
 // `severity`/`verdict`/verify-`result` is pass-through and is `z.string()`. The always-present top-level
@@ -20,7 +20,7 @@ import { z } from "zod";
 // the adapter branches on it (`ReviewReport.level === "blocking"` in envelope.ts).
 const OutcomeLevel = z.enum(["clean", "warning", "blocking"]);
 
-// --- corpus status --json  → DerivedBoard (deriveBoard.ts) -----------------------------------------
+// --- suspec status --json  → DerivedBoard (deriveBoard.ts) -----------------------------------------
 const BoardTask = z
   .object({
     id: z.string(),
@@ -44,7 +44,7 @@ export const DerivedBoardSchema = z
   .passthrough();
 export type DerivedBoard = z.infer<typeof DerivedBoardSchema>;
 
-// --- corpus check [file] --json (checkSpec.ts / checkWorkspace.ts) ---------------------------------
+// --- suspec check [file] --json (checkSpec.ts / checkWorkspace.ts) ---------------------------------
 const Diagnostic = z
   .object({
     code: z.string(),
@@ -96,7 +96,7 @@ export const WorkspaceCheckSchema = z
   .passthrough();
 export type WorkspaceCheck = z.infer<typeof WorkspaceCheckSchema>;
 
-// --- corpus review <stem> --json  → ReviewReport (reconcileReview.ts) ------------------------------
+// --- suspec review <stem> --json  → ReviewReport (reconcileReview.ts) ------------------------------
 // `kind` is the C012 coverage class; the adapter derives human-attention from `.message`/`.id`, never
 // branches on `kind` → pass-through (AC-011), z.string(). The `message` staying required is the tripwire.
 const CoverageFinding = z
@@ -120,7 +120,7 @@ const SelfReport = z
     claimedNotInDiff: z.array(z.string()),
     inDiffNotClaimed: z.array(z.string()),
     outsideScope: z.array(z.string()),
-    // A prose Run summary with no machine-checkable file paths (corpus-cli #44): the inDiffNotClaimed
+    // A prose Run summary with no machine-checkable file paths (suspec-cli #44): the inDiffNotClaimed
     // flood is suppressed and this is surfaced once. Optional for back-compat with an older CLI.
     runSummaryUnparsed: z.boolean().optional(),
   })
@@ -153,8 +153,8 @@ export const ReviewReportSchema = z
   .passthrough();
 export type ReviewReport = z.infer<typeof ReviewReportSchema>;
 
-// --- corpus show <kind> [ref] --json  → ShowResult (showArtifact.ts) -------------------------------
-// The loader projections corpus-mcp's get_* tools surface. Same drift-tripwire intent as the schemas
+// --- suspec show <kind> [ref] --json  → ShowResult (showArtifact.ts) -------------------------------
+// The loader projections suspec-mcp's get_* tools surface. Same drift-tripwire intent as the schemas
 // above: a renamed/dropped field the adapter relies on trips a parse in the contract tests. Each is the
 // uniform `{ level: 'clean', kind, value }` envelope (show never warns; a lookup failure is exit 2).
 const showEnvelope = <T extends z.ZodTypeAny>(kind: string, value: T) =>
@@ -162,7 +162,7 @@ const showEnvelope = <T extends z.ZodTypeAny>(kind: string, value: T) =>
     .object({ level: z.literal("clean"), kind: z.literal(kind), value })
     .passthrough();
 
-// corpus show checks → the contract version + the core checks (id/name/severity).
+// suspec show checks → the contract version + the core checks (id/name/severity).
 export const ShowChecksSchema = showEnvelope(
   "checks",
   z
@@ -179,7 +179,7 @@ export const ShowChecksSchema = showEnvelope(
 );
 export type ShowChecks = z.infer<typeof ShowChecksSchema>;
 
-// corpus show task → the task packet's frontmatter + scope/areas + the ADR-0100 cross-root embedded slice.
+// suspec show task → the task packet's frontmatter + scope/areas + the ADR-0100 cross-root embedded slice.
 export const ShowTaskSchema = showEnvelope(
   "task",
   z
@@ -203,7 +203,7 @@ export const ShowTaskSchema = showEnvelope(
 );
 export type ShowTask = z.infer<typeof ShowTaskSchema>;
 
-// corpus show spec → frontmatter (incl. the additive living-spec fields), requirements, and the
+// suspec show spec → frontmatter (incl. the additive living-spec fields), requirements, and the
 // append-only `## Execution` run-record (ADR-0103/0104 — the durable record once tasks are ephemeral).
 export const ShowSpecSchema = showEnvelope(
   "spec",
@@ -236,7 +236,7 @@ export const ShowSpecSchema = showEnvelope(
 );
 export type ShowSpec = z.infer<typeof ShowSpecSchema>;
 
-// corpus show review → the parsed packet PLUS the identity/staleness frontmatter projection: which
+// suspec show review → the parsed packet PLUS the identity/staleness frontmatter projection: which
 // spec/task it reviews (review-to-spec `spec:`, ADR-0103) and the fast-track pins (ADR-0107).
 export const ShowReviewSchema = showEnvelope(
   "review",
@@ -285,7 +285,7 @@ export type ShowReview = z.infer<typeof ShowReviewSchema>;
 // advisory severity — `new spec` emits `warning` on a duplicate ordinal). These reports carry NO verdict;
 // the contract pins the fields the adapter relays so a rename/drop trips the wire.
 
-// corpus new spec <slug> --json → ScaffoldSpecReport (scaffoldSpec.ts).
+// suspec new spec <slug> --json → ScaffoldSpecReport (scaffoldSpec.ts).
 export const ScaffoldSpecSchema = z
   .object({
     level: OutcomeLevel,
@@ -304,7 +304,7 @@ export const ScaffoldSpecSchema = z
   .passthrough();
 export type ScaffoldSpec = z.infer<typeof ScaffoldSpecSchema>;
 
-// corpus new task --from <SPEC> [--scope …] --json → CutPacketReport (cutPacket.ts).
+// suspec new task --from <SPEC> [--scope …] --json → CutPacketReport (cutPacket.ts).
 export const CutPacketSchema = z
   .object({
     level: OutcomeLevel,
@@ -315,7 +315,7 @@ export const CutPacketSchema = z
   .passthrough();
 export type CutPacket = z.infer<typeof CutPacketSchema>;
 
-// corpus promote <task> --json → ScaffoldFindingReport (scaffoldFinding.ts).
+// suspec promote <task> --json → ScaffoldFindingReport (scaffoldFinding.ts).
 export const ScaffoldFindingSchema = z
   .object({
     level: OutcomeLevel,
@@ -327,7 +327,7 @@ export const ScaffoldFindingSchema = z
 export type ScaffoldFinding = z.infer<typeof ScaffoldFindingSchema>;
 
 // The CLI's structured-error stdout body (unixOutcome.ts `emit_error`): `{error, message}` + exit 2.
-export const CorpusErrorSchema = z
+export const SuspecErrorSchema = z
   .object({ error: z.string(), message: z.string() })
   .passthrough();
-export type CorpusError = z.infer<typeof CorpusErrorSchema>;
+export type SuspecError = z.infer<typeof SuspecErrorSchema>;

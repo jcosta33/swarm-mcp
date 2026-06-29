@@ -18,14 +18,14 @@ import { create_server } from "../src/server.ts";
 // Exercises the resource surface (fixed + templated) over the in-memory transport, against the stub.
 // STUB_LOG records every subprocess argv, so the "no subprocess on a rejected id" claim is provable.
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
-const stubBin = join(fixtures, "stub-corpus.mjs");
-const errorBin = join(fixtures, "error-corpus.mjs"); // always emits a structured CLI error
-const nonjsonBin = join(fixtures, "nonjson-corpus.mjs"); // emits non-JSON → launch-error
+const stubBin = join(fixtures, "stub-suspec.mjs");
+const errorBin = join(fixtures, "error-suspec.mjs"); // always emits a structured CLI error
+const nonjsonBin = join(fixtures, "nonjson-suspec.mjs"); // emits non-JSON → launch-error
 
 let root: string;
 let logPath: string;
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "corpus-mcp-res-"));
+  root = mkdtempSync(join(tmpdir(), "suspec-mcp-res-"));
   mkdirSync(join(root, "findings"), { recursive: true });
   writeFileSync(
     join(root, "findings", "lesson.md"),
@@ -73,9 +73,9 @@ async function connect(
 const firstText = (r: { contents: { text?: string }[] }): string =>
   r.contents[0]?.text ?? "";
 
-// Symmetric to the tool sweep (server.spec INV-002): no resource body may carry a corpus-mcp-AUTHORED
+// Symmetric to the tool sweep (server.spec INV-002): no resource body may carry a suspec-mcp-AUTHORED
 // verdict key. Resources serve the CLI's data verbatim (only `workspace` wraps it, adding
-// noVerdictIssued) — none routes the `corpus check` verdict field — so no forbidden key should appear.
+// noVerdictIssued) — none routes the `suspec check` verdict field — so no forbidden key should appear.
 const FORBIDDEN_VERDICT_KEYS = [
   "verdict",
   "pass",
@@ -97,7 +97,7 @@ function collect_keys(obj: unknown, acc: string[] = []): string[] {
   return acc;
 }
 
-describe("corpus-mcp resources", () => {
+describe("suspec-mcp resources", () => {
   it("lists fixed resources + templated resources", async () => {
     const { client, close } = await connect();
     try {
@@ -105,35 +105,35 @@ describe("corpus-mcp resources", () => {
         .map((r) => r.uri)
         .sort();
       expect(fixed).toEqual([
-        "corpus://checks",
-        "corpus://status",
-        "corpus://workspace",
+        "suspec://checks",
+        "suspec://status",
+        "suspec://workspace",
       ]);
       const templates = (await client.listResourceTemplates()).resourceTemplates
         .map((r) => r.uriTemplate)
         .sort();
       expect(templates).toEqual([
-        "corpus://findings/{id}",
-        "corpus://reviews/{id}",
-        "corpus://specs/{id}",
-        "corpus://tasks/{id}",
+        "suspec://findings/{id}",
+        "suspec://reviews/{id}",
+        "suspec://specs/{id}",
+        "suspec://tasks/{id}",
       ]);
     } finally {
       await close();
     }
   });
 
-  it("no resource body carries a corpus-mcp-authored verdict key (INV-002, symmetric to the tool sweep)", async () => {
+  it("no resource body carries a suspec-mcp-authored verdict key (INV-002, symmetric to the tool sweep)", async () => {
     const { client, close } = await connect();
     try {
       const uris = [
-        "corpus://workspace",
-        "corpus://status",
-        "corpus://checks",
-        "corpus://tasks/feat",
-        "corpus://specs/SPEC-feat",
-        "corpus://reviews/feat",
-        "corpus://findings/lesson",
+        "suspec://workspace",
+        "suspec://status",
+        "suspec://checks",
+        "suspec://tasks/feat",
+        "suspec://specs/SPEC-feat",
+        "suspec://reviews/feat",
+        "suspec://findings/lesson",
       ];
       for (const uri of uris) {
         const text = firstText(await client.readResource({ uri }));
@@ -160,13 +160,13 @@ describe("corpus-mcp resources", () => {
     const { client, close } = await connect();
     try {
       expect(
-        firstText(await client.readResource({ uri: "corpus://workspace" })),
+        firstText(await client.readResource({ uri: "suspec://workspace" })),
       ).toContain('"mode": "read-only"');
       expect(
-        firstText(await client.readResource({ uri: "corpus://status" })),
+        firstText(await client.readResource({ uri: "suspec://status" })),
       ).toContain('"level"');
       expect(
-        firstText(await client.readResource({ uri: "corpus://checks" })),
+        firstText(await client.readResource({ uri: "suspec://checks" })),
       ).toContain('"version"');
     } finally {
       await close();
@@ -177,20 +177,20 @@ describe("corpus-mcp resources", () => {
     const { client, close } = await connect();
     try {
       expect(
-        firstText(await client.readResource({ uri: "corpus://tasks/feat" })),
+        firstText(await client.readResource({ uri: "suspec://tasks/feat" })),
       ).toContain("TASK-feat");
       expect(
         firstText(
-          await client.readResource({ uri: "corpus://specs/SPEC-feat" }),
+          await client.readResource({ uri: "suspec://specs/SPEC-feat" }),
         ),
       ).toContain("SPEC-feat");
       expect(
-        firstText(await client.readResource({ uri: "corpus://reviews/feat" })),
+        firstText(await client.readResource({ uri: "suspec://reviews/feat" })),
       ).toContain("needs-human");
       // findings have no parser — served as raw markdown from disk, root-confined
       expect(
         firstText(
-          await client.readResource({ uri: "corpus://findings/lesson" }),
+          await client.readResource({ uri: "suspec://findings/lesson" }),
         ),
       ).toContain("A durable lesson");
     } finally {
@@ -202,16 +202,16 @@ describe("corpus-mcp resources", () => {
     const { client, close } = await connect();
     try {
       for (const uri of [
-        "corpus://tasks/--help",
-        "corpus://reviews/--help",
-        "corpus://specs/--help",
-        "corpus://findings/--help",
+        "suspec://tasks/--help",
+        "suspec://reviews/--help",
+        "suspec://specs/--help",
+        "suspec://findings/--help",
       ]) {
         expect(firstText(await client.readResource({ uri }))).toMatch(
           /"error": ?"InvalidId"/,
         );
       }
-      // The id was rejected BEFORE any `corpus show` subprocess ran (not after, on a non-zero exit).
+      // The id was rejected BEFORE any `suspec show` subprocess ran (not after, on a non-zero exit).
       expect(invocations()).toEqual([]);
     } finally {
       await close();
@@ -222,7 +222,7 @@ describe("corpus-mcp resources", () => {
     const { client, close } = await connect(errorBin);
     try {
       const text = firstText(
-        await client.readResource({ uri: "corpus://status" }),
+        await client.readResource({ uri: "suspec://status" }),
       );
       expect(text).toContain("simulated structured error");
     } finally {
@@ -234,7 +234,7 @@ describe("corpus-mcp resources", () => {
     const { client, close } = await connect(nonjsonBin);
     try {
       const text = firstText(
-        await client.readResource({ uri: "corpus://status" }),
+        await client.readResource({ uri: "suspec://status" }),
       );
       expect(text).toMatch(/"error": ?"adapter"/);
       expect(text).toMatch(/no parseable JSON/);
@@ -250,7 +250,7 @@ describe("corpus-mcp resources", () => {
       expect(
         firstText(
           await client.readResource({
-            uri: "corpus://findings/does-not-exist",
+            uri: "suspec://findings/does-not-exist",
           }),
         ),
       ).toMatch(/no finding/i);
@@ -258,7 +258,7 @@ describe("corpus-mcp resources", () => {
       // all — so it cannot escape the root and cannot read /etc/passwd's contents.
       const rejected = firstText(
         await client.readResource({
-          uri: "corpus://findings/..%2f..%2fetc%2fpasswd",
+          uri: "suspec://findings/..%2f..%2fetc%2fpasswd",
         }),
       );
       expect(rejected).toMatch(/"error": ?"InvalidId"/);

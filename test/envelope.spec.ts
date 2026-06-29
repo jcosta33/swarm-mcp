@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import { build_envelope, respond, tool_error } from "../src/envelope.ts";
-import type { CorpusResult } from "../src/corpus/invoke.ts";
+import type { SuspecResult } from "../src/suspec/invoke.ts";
 
 // A CONTROLLED ReviewReport for the derive-logic test (deterministic, independent of any captured
 // fixture — the captured-output drift tripwire lives in contract.spec.ts).
@@ -34,9 +34,9 @@ const reviewData = {
   hasReviewPacket: true,
 };
 
-const okResult = (data: unknown): CorpusResult => ({
+const okResult = (data: unknown): SuspecResult => ({
   kind: "ok",
-  invocation: { command: "corpus x --json", exitCode: 0 },
+  invocation: { command: "suspec x --json", exitCode: 0 },
   data,
 });
 
@@ -44,7 +44,7 @@ describe("build_envelope", () => {
   it("always sets noVerdictIssued:true and carries no verdict field of its own", () => {
     const env = build_envelope(okResult({ level: "clean", verdict: "clean" }));
     expect(env.noVerdictIssued).toBe(true);
-    // corpus-mcp's OWN keys never include a verdict/approval (the CLI's data.verdict is exempt — passthrough)
+    // suspec-mcp's OWN keys never include a verdict/approval (the CLI's data.verdict is exempt — passthrough)
     for (const key of [
       "verdict",
       "pass",
@@ -194,7 +194,7 @@ describe("build_envelope", () => {
     const env = build_envelope(
       {
         kind: "structured-error",
-        invocation: { command: "corpus review x --json", exitCode: 2 },
+        invocation: { command: "suspec review x --json", exitCode: 2 },
         error: { error: "Usage", message: "no worktree found for x" },
       },
       "review",
@@ -209,7 +209,7 @@ describe("build_envelope", () => {
   });
 
   it("surfaces shape drift (the tripwire) when a review result does not match ReviewReportSchema", () => {
-    // If the CLI's reconcile shape ever drifts, corpus-mcp must NOT silently derive a wrong attention
+    // If the CLI's reconcile shape ever drifts, suspec-mcp must NOT silently derive a wrong attention
     // list — it passes the data through and notes that human-attention could not be derived.
     const env = build_envelope(
       okResult({ totally: "not a review report" }),
@@ -225,7 +225,7 @@ describe("build_envelope", () => {
     const env = build_envelope(
       {
         kind: "structured-error",
-        invocation: { command: "corpus review x --json", exitCode: 2 },
+        invocation: { command: "suspec review x --json", exitCode: 2 },
         error: {
           error: "NoWorkspace",
           message: "cannot run x: no tasks/x.md in this workspace",
@@ -242,8 +242,8 @@ describe("respond", () => {
   it("turns a launch-error into a tool error (isError), not an envelope", () => {
     const result = respond({
       kind: "launch-error",
-      invocation: { command: "corpus status --json", exitCode: 1 },
-      message: "could not launch `corpus`",
+      invocation: { command: "suspec status --json", exitCode: 1 },
+      message: "could not launch `suspec`",
     });
     expect("isError" in result && result.isError).toBe(true);
     expect("structuredContent" in result).toBe(false);

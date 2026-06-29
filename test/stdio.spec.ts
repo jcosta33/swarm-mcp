@@ -7,14 +7,14 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // AC-001 — the server actually starts and serves over REAL stdio (not just the in-memory transport).
-// Deterministic: the spawned server is pointed at the stub `corpus` binary and a temp workspace.
+// Deterministic: the spawned server is pointed at the stub `suspec` binary and a temp workspace.
 const here = dirname(fileURLToPath(import.meta.url));
 const serverEntry = join(here, "..", "src", "index.ts");
-const stubBin = join(here, "fixtures", "stub-corpus.mjs");
+const stubBin = join(here, "fixtures", "stub-suspec.mjs");
 
 let root: string;
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "corpus-mcp-stdio-"));
+  root = mkdtempSync(join(tmpdir(), "suspec-mcp-stdio-"));
   mkdirSync(join(root, "specs"), { recursive: true });
   writeFileSync(join(root, "specs", "x.md"), "# x");
 });
@@ -30,7 +30,7 @@ describe("real stdio transport (AC-001)", () => {
         serverEntry,
         "--workspace",
         root,
-        "--corpus-bin",
+        "--suspec-bin",
         stubBin,
       ],
     });
@@ -38,14 +38,14 @@ describe("real stdio transport (AC-001)", () => {
     await client.connect(transport);
     try {
       const tools = (await client.listTools()).tools.map((t) => t.name);
-      expect(tools).toContain("corpus_get_status");
-      expect(tools).toContain("corpus_get_task");
-      expect(tools).toContain("corpus_reconcile");
-      expect(tools).toContain("corpus_scaffold_spec");
+      expect(tools).toContain("suspec_get_status");
+      expect(tools).toContain("suspec_get_task");
+      expect(tools).toContain("suspec_reconcile");
+      expect(tools).toContain("suspec_scaffold_spec");
       expect(tools).toHaveLength(12);
 
       const result = (await client.callTool({
-        name: "corpus_get_status",
+        name: "suspec_get_status",
         arguments: {},
       })) as {
         structuredContent: {

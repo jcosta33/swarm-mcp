@@ -1,5 +1,5 @@
 // v0 resources — the application-driven context surface. Fixed URIs for the workspace board + the
-// checks contract; templated URIs for individual artifacts (parsed via the `corpus show` loaders, the
+// checks contract; templated URIs for individual artifacts (parsed via the `suspec show` loaders, the
 // same data the get_* tools expose). All read-only; every templated id is validated before any
 // subprocess. Findings have no parser, so they are served as raw markdown, labelled.
 
@@ -10,14 +10,14 @@ import {
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { invoke_corpus, type CorpusResult } from "./corpus/invoke.ts";
+import { invoke_suspec, type SuspecResult } from "./suspec/invoke.ts";
 import { confine_path, is_safe_segment, task_stem } from "./roots.ts";
 import type { Ctx } from "./tools.ts";
 
 const JSON_MIME = "application/json";
 
-// Render a CorpusResult's payload as the resource body (the CLI data, or the structured error).
-function body_of(result: CorpusResult): string {
+// Render a SuspecResult's payload as the resource body (the CLI data, or the structured error).
+function body_of(result: SuspecResult): string {
   if (result.kind === "ok") {
     return JSON.stringify(result.data, null, 2);
   }
@@ -30,14 +30,14 @@ function body_of(result: CorpusResult): string {
 export function register_resources(server: McpServer, ctx: Ctx): void {
   server.registerResource(
     "workspace",
-    "corpus://workspace",
+    "suspec://workspace",
     {
-      title: "Corpus workspace",
+      title: "Suspec workspace",
       description: "Workspace root, mode, and the current board summary.",
       mimeType: JSON_MIME,
     },
     (uri) => {
-      const status = invoke_corpus(ctx.env, "status");
+      const status = invoke_suspec(ctx.env, "status");
       const board = status.kind === "ok" ? status.data : null;
       const text = JSON.stringify(
         {
@@ -55,9 +55,9 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
 
   server.registerResource(
     "status",
-    "corpus://status",
+    "suspec://status",
     {
-      title: "Corpus board",
+      title: "Suspec board",
       description: "The derived workspace board — specs, tasks, reviews, gaps.",
       mimeType: JSON_MIME,
     },
@@ -66,7 +66,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
         {
           uri: uri.href,
           mimeType: JSON_MIME,
-          text: body_of(invoke_corpus(ctx.env, "status")),
+          text: body_of(invoke_suspec(ctx.env, "status")),
         },
       ],
     }),
@@ -74,7 +74,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
 
   server.registerResource(
     "checks",
-    "corpus://checks",
+    "suspec://checks",
     {
       title: "Checks contract",
       description: "The checks contract — version + the core checks.",
@@ -85,7 +85,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
         {
           uri: uri.href,
           mimeType: JSON_MIME,
-          text: body_of(invoke_corpus(ctx.env, "show", ["checks"])),
+          text: body_of(invoke_suspec(ctx.env, "show", ["checks"])),
         },
       ],
     }),
@@ -105,7 +105,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
       (uri, variables) => {
         const stem = task_stem(String(variables.id));
         const text = is_safe_segment(stem)
-          ? body_of(invoke_corpus(ctx.env, "show", [kind, stem]))
+          ? body_of(invoke_suspec(ctx.env, "show", [kind, stem]))
           : JSON.stringify({
               error: "InvalidId",
               message: `invalid id: ${String(variables.id)}`,
@@ -114,17 +114,17 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
       },
     );
   };
-  stem_resource("task", "corpus://tasks/{id}", "task");
-  stem_resource("review", "corpus://reviews/{id}", "review");
+  stem_resource("task", "suspec://tasks/{id}", "task");
+  stem_resource("review", "suspec://reviews/{id}", "review");
 
   server.registerResource(
     "spec",
-    new ResourceTemplate("corpus://specs/{id}", { list: undefined }),
+    new ResourceTemplate("suspec://specs/{id}", { list: undefined }),
     { title: "spec", mimeType: JSON_MIME },
     (uri, variables) => {
       const id = String(variables.id);
       const text = is_safe_segment(id)
-        ? body_of(invoke_corpus(ctx.env, "show", ["spec", id]))
+        ? body_of(invoke_suspec(ctx.env, "show", ["spec", id]))
         : JSON.stringify({
             error: "InvalidId",
             message: `invalid spec id: ${id}`,
@@ -138,7 +138,7 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
   // not depend on the SDK's URI-template capture semantics; `confine_path` then re-confirms as depth.
   server.registerResource(
     "finding",
-    new ResourceTemplate("corpus://findings/{id}", { list: undefined }),
+    new ResourceTemplate("suspec://findings/{id}", { list: undefined }),
     { title: "finding", mimeType: "text/markdown" },
     (uri, variables) => {
       const id = String(variables.id);

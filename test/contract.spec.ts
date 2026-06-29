@@ -16,12 +16,12 @@ import {
   ScaffoldSpecSchema,
   CutPacketSchema,
   ScaffoldFindingSchema,
-  CorpusErrorSchema,
-} from "../src/corpus/contract.ts";
+  SuspecErrorSchema,
+} from "../src/suspec/contract.ts";
 
 // The DRIFT TRIPWIRE has two halves that together pin stub → contract → reality:
-//   (1) the captured fixtures were recorded from the REAL `corpus … --json` (the corpus-works workspace —
-//       note the absolute paths). Parsing them proves the CONTRACT matches reality; a corpus-cli rename
+//   (1) the captured fixtures were recorded from the REAL `suspec … --json` (the suspec-works workspace —
+//       note the absolute paths). Parsing them proves the CONTRACT matches reality; a suspec-cli rename
 //       or dropped field fails the parse here instead of the adapter silently producing wrong output.
 //   (2) the test STUB (the binary the integration tests run against) is parsed through the SAME schemas,
 //       so the stub cannot drift from the contract the fixtures define — closing the gap where the stub,
@@ -29,7 +29,7 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(join(here, "fixtures", name), "utf8"));
-const stubBin = join(here, "fixtures", "stub-corpus.mjs");
+const stubBin = join(here, "fixtures", "stub-suspec.mjs");
 const runStub = (args: string[]): unknown =>
   JSON.parse(
     spawnSync(stubBin, [...args, "--json"], { encoding: "utf8" }).stdout.trim(),
@@ -73,7 +73,7 @@ describe("the contract matches the real --json shapes (captured fixtures)", () =
     ).toBe(true);
     // AC-011: the adapter only PASSES `code` through (it surfaces the message, never branches on the
     // code), so a new CLI advisory code is a benign additive change that must NOT convert into a
-    // corpus-mcp break — it parses, where the old closed enum would have tripped.
+    // suspec-mcp break — it parses, where the old closed enum would have tripped.
     expect(
       WorkspaceCheckSchema.safeParse(withFinding("totally-new-code")).success,
     ).toBe(true);
@@ -158,7 +158,7 @@ describe("the contract matches the real --json shapes (captured fixtures)", () =
 
   it("the structured error body parses", () => {
     expect(
-      CorpusErrorSchema.safeParse({
+      SuspecErrorSchema.safeParse({
         error: "Usage",
         message: "no worktree found",
       }).success,
@@ -198,7 +198,7 @@ describe("the contract matches the real --json shapes (captured fixtures)", () =
       readFileSync(join(here, "fixtures", "review-report.json"), "utf8"),
     );
     // AC-011: the adapter derives human-attention from `.message`/`.id` and never branches on `kind`, so
-    // a new CLI coverage kind is a benign additive change that must NOT break corpus-mcp (it parses).
+    // a new CLI coverage kind is a benign additive change that must NOT break suspec-mcp (it parses).
     const newKind = { ...base };
     newKind.coverage = [{ id: "AC-001", kind: "something-new", message: "x" }];
     expect(ReviewReportSchema.safeParse(newKind).success).toBe(true);

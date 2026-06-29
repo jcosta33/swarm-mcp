@@ -11,7 +11,7 @@ async function connect(): Promise<{
   close: () => Promise<void>;
 }> {
   const server = create_server({
-    env: { bin: "corpus", cwd: "/tmp" },
+    env: { bin: "suspec", cwd: "/tmp" },
     root: "/tmp",
   });
   const [ct, st] = InMemoryTransport.createLinkedPair();
@@ -35,7 +35,7 @@ function promptText(result: {
     .join("\n");
 }
 
-describe("corpus-mcp prompts", () => {
+describe("suspec-mcp prompts", () => {
   it("lists the five v0 prompts", async () => {
     const { client, close } = await connect();
     try {
@@ -44,11 +44,11 @@ describe("corpus-mcp prompts", () => {
         .sort();
       expect(names).toEqual(
         [
-          "corpus_before_done",
-          "corpus_evidence_rule",
-          "corpus_finding_candidate",
-          "corpus_review_assistant",
-          "corpus_task_briefing",
+          "suspec_before_done",
+          "suspec_evidence_rule",
+          "suspec_finding_candidate",
+          "suspec_review_assistant",
+          "suspec_task_briefing",
         ].sort(),
       );
     } finally {
@@ -60,7 +60,7 @@ describe("corpus-mcp prompts", () => {
     const { client, close } = await connect();
     try {
       const r = (await client.getPrompt({
-        name: "corpus_before_done",
+        name: "suspec_before_done",
         arguments: { task: "TASK-x" },
       })) as {
         messages: { content: { type: string; text?: string } }[];
@@ -80,7 +80,7 @@ describe("corpus-mcp prompts", () => {
     const { client, close } = await connect();
     try {
       const r = (await client.getPrompt({
-        name: "corpus_review_assistant",
+        name: "suspec_review_assistant",
         arguments: { task: "TASK-x" },
       })) as {
         messages: { content: { type: string; text?: string } }[];

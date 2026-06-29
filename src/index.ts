@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Entry: resolve config (workspace root + `corpus` binary), build the server, connect stdio. The stdout
+// Entry: resolve config (workspace root + `suspec` binary), build the server, connect stdio. The stdout
 // stream IS the MCP protocol — all diagnostics go to stderr only.
 
 import { pathToFileURL } from "node:url";
@@ -10,24 +10,24 @@ import { create_server } from "./server.ts";
 
 export type Config = Readonly<{ root: string; bin: string }>;
 
-// Config order: CLI flags > env > cwd. `--workspace <path>` / CORPUS_WORKSPACE picks the workspace;
-// `--corpus-bin <path>` / CORPUS_BIN picks the `corpus` binary (default `corpus` on PATH).
+// Config order: CLI flags > env > cwd. `--workspace <path>` / SUSPEC_WORKSPACE picks the workspace;
+// `--suspec-bin <path>` / SUSPEC_BIN picks the `suspec` binary (default `suspec` on PATH).
 export function parse_config(
   argv: readonly string[],
   env: NodeJS.ProcessEnv,
   cwd: string,
 ): Config {
-  let root = env.CORPUS_WORKSPACE ?? cwd;
-  let bin = env.CORPUS_BIN ?? "corpus";
+  let root = env.SUSPEC_WORKSPACE ?? cwd;
+  let bin = env.SUSPEC_BIN ?? "suspec";
   for (let i = 0; i < argv.length; i += 1) {
-    // Treat a flag-shaped next token as a missing value (don't consume `--corpus-bin` as the workspace).
+    // Treat a flag-shaped next token as a missing value (don't consume `--suspec-bin` as the workspace).
     const next = argv[i + 1];
     const value =
       next !== undefined && !next.startsWith("--") ? next : undefined;
     if (argv[i] === "--workspace" && value !== undefined) {
       root = value;
       i += 1;
-    } else if (argv[i] === "--corpus-bin" && value !== undefined) {
+    } else if (argv[i] === "--suspec-bin" && value !== undefined) {
       bin = value;
       i += 1;
     }
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   const server = create_server({ env: { bin, cwd: root }, root });
   await server.connect(new StdioServerTransport());
   process.stderr.write(
-    `corpus-mcp: ready (workspace=${root}, corpus=${bin})\n`,
+    `suspec-mcp: ready (workspace=${root}, suspec=${bin})\n`,
   );
 }
 
@@ -55,7 +55,7 @@ function is_main_module(metaUrl: string, entry: string | undefined): boolean {
 if (is_main_module(import.meta.url, process.argv[1])) {
   main().catch((error: unknown) => {
     process.stderr.write(
-      `corpus-mcp: fatal: ${error instanceof Error ? error.message : String(error)}\n`,
+      `suspec-mcp: fatal: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exit(1);
   });

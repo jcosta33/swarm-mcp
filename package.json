@@ -1,28 +1,28 @@
 {
-  "name": "corpus-mcp",
+  "name": "suspec-mcp",
   "version": "0.2.0",
-  "description": "An MCP stdio server that gives agent clients Corpus's read + reconcile facts under a no-verdict envelope, plus a verdict-free safe-write tier (scaffold spec/task/finding) — built for non-terminal clients (Claude Desktop, Cursor) without a shell. Reconcile-only, issues no verdict.",
+  "description": "An MCP stdio server that gives agent clients Suspec's read + reconcile facts under a no-verdict envelope, plus a verdict-free safe-write tier (scaffold spec/task/finding) — built for non-terminal clients (Claude Desktop, Cursor) without a shell. Reconcile-only, issues no verdict.",
   "type": "module",
   "license": "MIT",
   "author": "José Costa",
-  "homepage": "https://github.com/jcosta33/corpus-mcp#readme",
+  "homepage": "https://github.com/jcosta33/suspec-mcp#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jcosta33/corpus-mcp.git"
+    "url": "git+https://github.com/jcosta33/suspec-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/jcosta33/corpus-mcp/issues"
+    "url": "https://github.com/jcosta33/suspec-mcp/issues"
   },
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "corpus",
+    "suspec",
     "code-review",
     "agents",
     "claude"
   ],
   "bin": {
-    "corpus-mcp": "./bin/corpus-mcp.js"
+    "suspec-mcp": "./bin/suspec-mcp.js"
   },
   "files": [
     "dist",

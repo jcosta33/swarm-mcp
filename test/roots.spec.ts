@@ -19,7 +19,7 @@ import {
 
 let root: string;
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), "corpus-mcp-roots-")));
+  root = realpathSync(mkdtempSync(join(tmpdir(), "suspec-mcp-roots-")));
   mkdirSync(join(root, "specs", "a"), { recursive: true });
   writeFileSync(join(root, "specs", "a", "spec.md"), "# spec");
 });
@@ -53,7 +53,7 @@ describe("confine_path", () => {
 
   it("accepts an absolute in-workspace path when the workspace root is reached via a symlink (#27)", () => {
     const linkParent = realpathSync(
-      mkdtempSync(join(tmpdir(), "corpus-mcp-link-")),
+      mkdtempSync(join(tmpdir(), "suspec-mcp-link-")),
     );
     try {
       const link = join(linkParent, "link");
@@ -70,7 +70,7 @@ describe("confine_path", () => {
 
   it("rejects a symlink that escapes the root", () => {
     const outside = realpathSync(
-      mkdtempSync(join(tmpdir(), "corpus-mcp-outside-")),
+      mkdtempSync(join(tmpdir(), "suspec-mcp-outside-")),
     );
     writeFileSync(join(outside, "secret.md"), "x");
     symlinkSync(join(outside, "secret.md"), join(root, "link.md"));
@@ -83,7 +83,7 @@ describe("confine_path", () => {
 
   it("rejects a symlinked PARENT dir even when the leaf does not exist yet", () => {
     const outside = realpathSync(
-      mkdtempSync(join(tmpdir(), "corpus-mcp-outside-")),
+      mkdtempSync(join(tmpdir(), "suspec-mcp-outside-")),
     );
     symlinkSync(outside, join(root, "evildir")); // a dir symlink pointing outside root
     try {

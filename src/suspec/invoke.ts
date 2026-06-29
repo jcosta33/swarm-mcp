@@ -1,19 +1,19 @@
-// The ONE subprocess edge. corpus-mcp never imports corpus-cli's internals — it shells out to the
-// `corpus` CLI's `--json` contract with a FIXED argv array (never a shell string, never a client-injected
+// The ONE subprocess edge. suspec-mcp never imports suspec-cli's internals — it shells out to the
+// `suspec` CLI's `--json` contract with a FIXED argv array (never a shell string, never a client-injected
 // flag). The verb is checked against a closed allow-list; positional args are pre-validated by the
-// caller (a file path confined to roots, or a task stem). `--json` is always appended; corpus-mcp never
+// caller (a file path confined to roots, or a task stem). `--json` is always appended; suspec-mcp never
 // passes a `--write`/`--force`/`--agent` mutation flag — only the verdict-free `--from`/`--scope` flags
-// the safe-write tier (AC-009) needs, each validated by the caller. This keeps corpus-cli at its minimal
+// the safe-write tier (AC-009) needs, each validated by the caller. This keeps suspec-cli at its minimal
 // footprint and couples the two repos only through the public, tested JSON interface.
 
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
-export type CorpusEnv = Readonly<{
-  bin: string; // the `corpus` binary (env CORPUS_BIN, else 'corpus' on PATH)
+export type SuspecEnv = Readonly<{
+  bin: string; // the `suspec` binary (env SUSPEC_BIN, else 'suspec' on PATH)
   cwd: string; // the workspace root — every invocation runs here (root-confinement, defense in depth)
 }>;
 
-// The verbs corpus-mcp may invoke. The read/reconcile set (status/check/review/show) plus the verdict-free
+// The verbs suspec-mcp may invoke. The read/reconcile set (status/check/review/show) plus the verdict-free
 // SAFE-WRITE prepare ops (new/promote, AC-009 / ADR-0077 D8): each scaffolds an artifact (a spec, a task,
 // a candidate finding) — never a board, a result, or a verdict.
 const ALLOWED_VERBS = new Set([
@@ -25,12 +25,12 @@ const ALLOWED_VERBS = new Set([
   "promote",
 ]);
 
-// The ONLY non-`--json` flags corpus-mcp may pass — the verdict-free flags the read + safe-write tiers
+// The ONLY non-`--json` flags suspec-mcp may pass — the verdict-free flags the read + safe-write tiers
 // need. NOTABLY ABSENT: `--write` / `--force` / `--agent` (every mutation/verdict flag) — so a safe-write
 // op can only SCAFFOLD a fresh artifact, never overwrite or mutate one.
 const ALLOWED_FLAGS = new Set(["--base", "--from", "--scope"]);
 
-export type CorpusInvocation = Readonly<{
+export type SuspecInvocation = Readonly<{
   command: string; // the human-readable command line, for the envelope's provenance
   exitCode: number;
 }>;
@@ -39,16 +39,16 @@ export type CorpusInvocation = Readonly<{
 // (e.g. `{"error":"Usage","message":"no worktree found …"}` with exit 2). So a parsed object with an
 // `error` field is a *structured* failure (surfaced to the agent as a fact), distinct from a launch
 // failure (binary missing / non-JSON output), which is an adapter error.
-export type CorpusResult =
-  | Readonly<{ kind: "ok"; invocation: CorpusInvocation; data: unknown }>
+export type SuspecResult =
+  | Readonly<{ kind: "ok"; invocation: SuspecInvocation; data: unknown }>
   | Readonly<{
       kind: "structured-error";
-      invocation: CorpusInvocation;
+      invocation: SuspecInvocation;
       error: { error: string; message: string };
     }>
   | Readonly<{
       kind: "launch-error";
-      invocation: CorpusInvocation;
+      invocation: SuspecInvocation;
       message: string;
     }>;
 
@@ -63,16 +63,16 @@ function has_error_field(
   );
 }
 
-export function invoke_corpus(
-  env: CorpusEnv,
+export function invoke_suspec(
+  env: SuspecEnv,
   verb: string,
   positional: readonly string[] = [],
   opts: { base?: string; flags?: Readonly<Record<string, string>> } = {},
-): CorpusResult {
+): SuspecResult {
   if (!ALLOWED_VERBS.has(verb)) {
     // Defense in depth — the tools only ever pass allow-listed verbs; this catches a programming slip.
     throw new Error(
-      `corpus-mcp: refusing to invoke a non-allow-listed corpus verb: "${verb}"`,
+      `suspec-mcp: refusing to invoke a non-allow-listed suspec verb: "${verb}"`,
     );
   }
   const args = [verb, ...positional];
@@ -82,7 +82,7 @@ export function invoke_corpus(
   for (const [flag, value] of Object.entries(opts.flags ?? {})) {
     if (!ALLOWED_FLAGS.has(flag)) {
       throw new Error(
-        `corpus-mcp: refusing to pass a non-allow-listed flag: "${flag}"`,
+        `suspec-mcp: refusing to pass a non-allow-listed flag: "${flag}"`,
       );
     }
     args.push(flag, value);
@@ -91,12 +91,12 @@ export function invoke_corpus(
     args.push("--base", opts.base);
   }
   args.push("--json");
-  const command = `corpus ${args.join(" ")}`;
+  const command = `suspec ${args.join(" ")}`;
 
-  // A bounded timeout so a hung `corpus` cannot hang the tool call forever (the read/reconcile commands
+  // A bounded timeout so a hung `suspec` cannot hang the tool call forever (the read/reconcile commands
   // are local and fast; a timeout surfaces as result.error → a launch-error below). `maxBuffer` is raised
   // well above Node's 1 MB default: a large workspace's `status` / `review --json` can exceed 1 MB, and
-  // the default truncates it to an unparseable blob that then masquerades as a launch error (corpus-works #22).
+  // the default truncates it to an unparseable blob that then masquerades as a launch error (suspec-works #22).
   // The try/catch is defense-in-depth: spawnSync THROWS synchronously on some malformed args (e.g. a NUL
   // byte), which the input guards already reject — but a throw must still become a clean launch-error.
   let result: SpawnSyncReturns<string>;
@@ -122,7 +122,7 @@ export function invoke_corpus(
     };
   }
   const exitCode = result.status ?? 1;
-  const invocation: CorpusInvocation = { command, exitCode };
+  const invocation: SuspecInvocation = { command, exitCode };
   const stdout = (result.stdout ?? "").trim();
 
   let parsed: unknown;

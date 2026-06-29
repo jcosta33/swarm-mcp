@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// A stub `corpus` binary for deterministic, offline corpus-mcp tests. Records every invocation's argv to
+// A stub `suspec` binary for deterministic, offline suspec-mcp tests. Records every invocation's argv to
 // STUB_LOG (so tests can assert which subprocesses ran / that no write flag was ever passed) and emits
 // fixture JSON to stdout keyed off the verb — mirroring the real CLI's --json shapes.
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";

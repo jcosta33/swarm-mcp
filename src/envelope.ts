@@ -1,21 +1,21 @@
 // The result envelope every tool returns. Two invariants live here (both typed + tested):
-//   1. `noVerdictIssued: true` — a HARD, tested invariant. corpus-mcp relays the CLI's facts and may
+//   1. `noVerdictIssued: true` — a HARD, tested invariant. suspec-mcp relays the CLI's facts and may
 //      DERIVE a triage list, but it never adds a Pass/Fail/approve/merge result of its own.
 //   2. `data` is the CLI's `--json` output VERBATIM — including the CLI's own honest fields (a check's
-//      `level`/`verdict` outcome, the human-recorded board `reviewStatus`). corpus-mcp passes the human's
+//      `level`/`verdict` outcome, the human-recorded board `reviewStatus`). suspec-mcp passes the human's
 //      recorded state through; it does not scrub it and does not adjudicate it.
-// The `derived.humanAttention` list is computed BY corpus-mcp from the real ReviewReport facts, labelled
+// The `derived.humanAttention` list is computed BY suspec-mcp from the real ReviewReport facts, labelled
 // as derived so no one mistakes it for an engine field (the engine emits facts + an advisory level only).
 // Each item is STRUCTURED `{category, severity, message, ref}` (AC-010) so an agent can act selectively
 // without re-parsing `data`.
 
 import { z } from "zod";
 
-import type { CorpusResult } from "./corpus/invoke.ts";
-import { ReviewReportSchema, type ReviewReport } from "./corpus/contract.ts";
+import type { SuspecResult } from "./suspec/invoke.ts";
+import { ReviewReportSchema, type ReviewReport } from "./suspec/contract.ts";
 
 const NO_VERDICT_NOTE =
-  "corpus-mcp surfaces facts only and issues no verdict. A human or an independent reviewer owns the " +
+  "suspec-mcp surfaces facts only and issues no verdict. A human or an independent reviewer owns the " +
   "review result (Pass / Fail / Unverified / Blocked); an empty or weak Evidence cell reads Unverified " +
   "regardless of a clean reconcile.";
 
@@ -197,7 +197,7 @@ function derive_human_attention(report: ReviewReport): AttentionItem[] {
 // verbatim payload. The slice is applied ONLY to a successful `ok` result — an error data body
 // is small already and surfaced whole.
 export function build_envelope(
-  result: Exclude<CorpusResult, { kind: "launch-error" }>,
+  result: Exclude<SuspecResult, { kind: "launch-error" }>,
   kind: "plain" | "review" = "plain",
   opts: {
     format?: "concise" | "detailed";
@@ -287,11 +287,11 @@ export function tool_result(envelope: Envelope): {
   };
 }
 
-// The single dispatch a tool uses: a launch-error (the `corpus` binary is missing / emitted no JSON)
+// The single dispatch a tool uses: a launch-error (the `suspec` binary is missing / emitted no JSON)
 // becomes a tool error; a successful or structured-error result becomes a no-verdict envelope. `kind`
 // selects the review-derivation path; `opts` carries the concise/detailed format + the per-tool slice.
 export function respond(
-  result: CorpusResult,
+  result: SuspecResult,
   kind: "plain" | "review" = "plain",
   opts: {
     format?: "concise" | "detailed";
@@ -304,7 +304,7 @@ export function respond(
   return tool_result(build_envelope(result, kind, opts));
 }
 
-// An adapter-level failure (the `corpus` binary is missing / emitted no JSON) or a rejected request (a
+// An adapter-level failure (the `suspec` binary is missing / emitted no JSON) or a rejected request (a
 // path outside root) is a tool error: text + `isError`, with NO structuredContent — so it does not have
 // to satisfy (and cannot violate) the success outputSchema. An error inherently issues no verdict.
 export function tool_error(message: string): {
@@ -312,7 +312,7 @@ export function tool_error(message: string): {
   isError: true;
 } {
   return {
-    content: [{ type: "text", text: `corpus-mcp adapter error: ${message}` }],
+    content: [{ type: "text", text: `suspec-mcp adapter error: ${message}` }],
     isError: true,
   };
 }
