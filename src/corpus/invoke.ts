@@ -15,7 +15,7 @@ export type CorpusEnv = Readonly<{
 
 // The verbs corpus-mcp may invoke. The read/reconcile set (status/check/review/show) plus the verdict-free
 // SAFE-WRITE prepare ops (new/promote, AC-009 / ADR-0077 D8): each scaffolds an artifact (a spec, a task,
-// a candidate finding) and writes NO board, NO review result, and issues NO verdict.
+// a candidate finding) — never a board, a result, or a verdict.
 const ALLOWED_VERBS = new Set([
   "status",
   "check",
@@ -26,8 +26,8 @@ const ALLOWED_VERBS = new Set([
 ]);
 
 // The ONLY non-`--json` flags corpus-mcp may pass — the verdict-free flags the read + safe-write tiers
-// need. NOTABLY ABSENT: `--write` / `--force` / `--agent` (every mutation/verdict flag). A safe-write op
-// can only SCAFFOLD a fresh artifact; it can never overwrite (no `--force`) or write a review result.
+// need. NOTABLY ABSENT: `--write` / `--force` / `--agent` (every mutation/verdict flag) — so a safe-write
+// op can only SCAFFOLD a fresh artifact, never overwrite or mutate one.
 const ALLOWED_FLAGS = new Set(["--base", "--from", "--scope"]);
 
 export type CorpusInvocation = Readonly<{

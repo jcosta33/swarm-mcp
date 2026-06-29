@@ -193,8 +193,8 @@ function derive_human_attention(report: ReviewReport): AttentionItem[] {
 // launch-error never reaches here — `respond()` turns it into a tool error.
 //
 // `format` selects the slice `data` carries (AC-013). `slice` (when given for a read tool) maps the
-// VERBATIM CLI data to a smaller, targeted projection in concise mode (≈⅓ the tokens); detailed mode is
-// always the verbatim payload. The slice is applied ONLY to a successful `ok` result — an error data body
+// VERBATIM CLI data to a smaller, targeted projection in concise mode; detailed mode is always the
+// verbatim payload. The slice is applied ONLY to a successful `ok` result — an error data body
 // is small already and surfaced whole.
 export function build_envelope(
   result: Exclude<CorpusResult, { kind: "launch-error" }>,

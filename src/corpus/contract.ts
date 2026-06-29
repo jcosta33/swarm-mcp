@@ -48,8 +48,7 @@ export type DerivedBoard = z.infer<typeof DerivedBoardSchema>;
 const Diagnostic = z
   .object({
     code: z.string(),
-    // Pass-through (surfaced in `data` / the concise slice, never branched) → z.string(), not a closed
-    // enum, so a new CLI check severity does not break the adapter (AC-011).
+    // pass-through (AC-011) → z.string(), not a closed enum.
     severity: z.string(),
     message: z.string(),
     line: z.number().nullable().optional(),
@@ -74,11 +73,9 @@ const WorkspaceSpecCheck = z
 // A workspace-level finding (checkWorkspace.ts `WorkspaceFinding`) — a C002/C017 collision, a kit-
 // validity problem (placeholder / missing-template / agents-oversize), or one of the reconcile-only
 // advisories (supersede-* / duplicate-content / unpromoted-finding / incomplete-execution-digest). These
-// live OUTSIDE any spec's diagnostics, so an agent reading only `specs[]` would miss them. The adapter
-// only PASSES the `code` through (it surfaces the `message`, never switches on the code), so per AC-011/F7
-// it is `z.string()`, NOT a closed enum — a new CLI advisory code (a benign additive change) must not
-// convert into a corpus-mcp break for no consumer benefit. The `message` (which the agent reads) staying
-// required IS the tripwire: a dropped message field still trips the wire.
+// live OUTSIDE any spec's diagnostics, so an agent reading only `specs[]` would miss them. The `code` is
+// pass-through (AC-011) → z.string(); the `message` (which the agent reads) staying required IS the
+// tripwire: a dropped message field still trips the wire.
 const WorkspaceFinding = z
   .object({
     code: z.string(),
@@ -89,7 +86,7 @@ export const WorkspaceCheckSchema = z
   .object({
     level: OutcomeLevel,
     // The check outcome (NOT a review verdict): the merge-gate result the CLI computes for the repo.
-    // Pass-through (surfaced, never branched) → z.string() (AC-011).
+    // pass-through (AC-011) → z.string().
     verdict: z.string(),
     specs: z.array(WorkspaceSpecCheck),
     // The change-plan files' check results, same shape as a spec result (checkWorkspace.ts).
@@ -100,9 +97,8 @@ export const WorkspaceCheckSchema = z
 export type WorkspaceCheck = z.infer<typeof WorkspaceCheckSchema>;
 
 // --- corpus review <stem> --json  → ReviewReport (reconcileReview.ts) ------------------------------
-// `kind` is the C012 coverage class; the adapter derives human-attention from `.message`/`.id` and never
-// branches on `kind`, so it is pass-through → z.string() (AC-011). The `message` staying required is the
-// tripwire — a dropped message (which the adapter reads) still trips the wire.
+// `kind` is the C012 coverage class; the adapter derives human-attention from `.message`/`.id`, never
+// branches on `kind` → pass-through (AC-011), z.string(). The `message` staying required is the tripwire.
 const CoverageFinding = z
   .object({
     id: z.string(),
@@ -110,8 +106,8 @@ const CoverageFinding = z
     message: z.string(),
   })
   .passthrough();
-// The C013 verify-evidence-binding consistency classes (checksContract.ts `VerifyBindingFinding`). Same
-// as coverage: `kind` is pass-through (adapter reads `.message`/`.id`) → z.string() (AC-011).
+// The C013 verify-evidence-binding consistency classes (checksContract.ts `VerifyBindingFinding`).
+// Same as coverage: `kind` is pass-through (AC-011) → z.string().
 const VerifyBindingReport = z
   .object({
     id: z.string(),
@@ -173,7 +169,7 @@ export const ShowChecksSchema = showEnvelope(
     .object({
       version: z.string(),
       checks: z.array(
-        // `severity` is pass-through (surfaced/sliced, never branched) → z.string() (AC-011).
+        // `severity` is pass-through (AC-011) → z.string().
         z
           .object({ id: z.string(), name: z.string(), severity: z.string() })
           .passthrough(),
@@ -258,8 +254,7 @@ export const ShowReviewSchema = showEnvelope(
           .passthrough(),
       ),
       verifyBlocks: z.array(
-        // `result` is pass-through (sliced into the concise view, never branched) → a nullable string,
-        // not a closed enum (AC-011).
+        // `result` is pass-through (AC-011) → a nullable string, not a closed enum.
         z
           .object({
             id: z.string().nullable(),

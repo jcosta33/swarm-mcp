@@ -1,6 +1,5 @@
-// Compose the Corpus MCP server: register the read/reconcile tools + resources (+ prompts in slice 4)
-// onto a fresh McpServer. Pure construction — no transport here, so tests can drive it over an
-// in-memory transport.
+// Compose the Corpus MCP server: register the read/reconcile tools, resources, and prompts onto a fresh
+// McpServer. Pure construction — no transport here, so tests can drive it over an in-memory transport.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 

@@ -27,8 +27,8 @@ export function resolve_root(root: string): string {
 // (safe to pass to a `corpus` invoked with cwd=root), or null if it escapes. Rejects: control chars (a
 // NUL byte breaks spawn), `..` traversal, absolute escapes, the root itself (not a file), flag-shaped
 // paths, and symlink escapes — including a symlinked PARENT directory even when the leaf does not exist
-// yet (so the guard is correct for the loader/write verbs landing in later slices, not just today's read
-// verb whose "file not found" happens to backstop it).
+// yet (so the guard is correct for the loader and safe-write verbs, not only the read verb whose
+// file-not-found would otherwise backstop it).
 export function confine_path(root: string, candidate: string): string | null {
   if (has_control_char(candidate)) {
     return null;

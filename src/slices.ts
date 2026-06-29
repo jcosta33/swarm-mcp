@@ -1,6 +1,6 @@
 // The concise projections for the read tools (AC-013). Each `slice_*` maps the CLI's VERBATIM `--json`
 // payload to a smaller, targeted view returned in concise `response_format` — the relevant slice an agent
-// acts on, ≈⅓ the tokens of the detailed (verbatim) payload. The rule: keep the IDENTIFIERS and the
+// acts on, vs the detailed (verbatim) payload. The rule: keep the IDENTIFIERS and the
 // triage-bearing fields, drop the prose bodies, line numbers, evidence text, and rarely-branched
 // frontmatter. Each slice is total + defensive: it reads only fields it knows and falls back to the
 // verbatim data if the shape is unrecognised, so concise never throws on a drifted payload (the contract

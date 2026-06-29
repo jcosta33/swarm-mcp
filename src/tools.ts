@@ -1,14 +1,14 @@
 // The Corpus MCP tool surface. Three tiers, all routed through the no-verdict envelope:
 //   • READ — status / list / check / show-loader projections over the CLI's read `--json` (status, check,
 //     show). Each declares an outputSchema and takes a `response_format` (concise|detailed, AC-013):
-//     concise returns the relevant slice (≈⅓ the tokens), detailed the verbatim payload.
+//     concise returns the relevant slice, detailed the verbatim payload.
 //   • RECONCILE — the single `corpus_reconcile` (AC-007): one engine (`corpus review`), one tool. The
 //     scan-vs-reconcile distinction is data-driven (`report.hasReviewPacket`), not two tools; the
 //     implementer-vs-reviewer STANCE split lives in the prompts (prompts.ts), not here.
 //   • SAFE-WRITE — the verdict-free prepare tier (AC-009 / ADR-0077 D8): scaffold_spec / split_task /
 //     scaffold_finding back the CLI's `new spec` / `new task --from` / `promote`. Each SCAFFOLDS a fresh
-//     artifact and writes NO board, NO review result, and issues NO verdict — it is annotated non-verdict
-//     and read-adjacent (it creates an artifact; it never adjudicates one).
+//     artifact; it is annotated non-verdict and read-adjacent (it creates an artifact, never adjudicates
+//     one). See register_safe_write_tools for the full guarantee.
 
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -52,7 +52,8 @@ const SAFE_WRITE = {
 };
 
 // The verbosity control every read tool advertises (AC-013). `detailed` is the verbatim CLI payload;
-// `concise` (the default) is the targeted slice an agent acts on, ≈⅓ the tokens.
+// `concise` (the default) is the targeted slice an agent acts on (the .describe() string below is the
+// model-facing copy).
 const responseFormatInput = {
   response_format: z
     .enum(["concise", "detailed"])
@@ -176,8 +177,7 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
   );
 
   // --- RECONCILE tier ------------------------------------------------------------------------------
-  // ONE reconcile tool (AC-007). scan = reconcile with no review packet present; the report carries
-  // `hasReviewPacket`, so the scan-vs-reconcile distinction is DATA, not two tools. The single positional
+  // The single positional (see the module header for why scan-vs-reconcile is data, not two tools)
   // is EITHER a task (`corpus review` resolves it to a task, keys coverage on the task scope, diffs the
   // worktree) OR a spec (the task-less 1:1 review-to-spec case, ADR-0103 — coverage on the spec's full
   // ACs, self-report from its `## Execution`). The CLI dispatches off the arg; the adapter must NOT
@@ -305,13 +305,14 @@ export function register_tools(server: McpServer, ctx: Ctx): void {
       title: "Get a parsed review packet",
       description:
         "The review packet's status, coverage rows, verify blocks, and identity/staleness frontmatter (which " +
-        "spec/task it reviews — a spec for the task-less 1:1 case — plus the fast-track reviewedSha/evidenceHash " +
-        "pins). concise drops the evidence prose + staleness pins; detailed returns them. " +
-        "Read-only; the verdict is the human's.",
+        "spec/task it reviews, plus the fast-track reviewedSha/evidenceHash pins). concise drops the " +
+        "evidence prose + staleness pins; detailed returns them. Read-only; the verdict is the human's.",
       inputSchema: {
         task: z
           .string()
-          .describe("task id or stem (the review is reviews/<stem>.md)"),
+          .describe(
+            "task id or stem; for a task-less review pass its filename stem (the review is reviews/<stem>.md)",
+          ),
         ...responseFormatInput,
       },
       outputSchema: ENVELOPE_OUTPUT_SHAPE,
@@ -365,9 +366,8 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       title: "Scaffold a fresh draft spec (prepare op — no verdict)",
       description:
         "VERDICT-FREE PREPARE OP: scaffold a fresh draft `specs/<slug>/spec.md` from the kit " +
-        "template via `corpus new spec`. Creates the skeleton for an author to fill — it writes NO board, " +
-        "NO review result, and issues NO verdict; it never overwrites an existing spec. Returns the created " +
-        "path + spec id.",
+        "template via `corpus new spec`. Creates the skeleton for an author to fill; it never overwrites an " +
+        "existing spec. Returns the created path + spec id.",
       inputSchema: {
         slug: z
           .string()
@@ -393,9 +393,8 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       description:
         "VERDICT-FREE PREPARE OP: cut a task packet from a named spec via `corpus new task " +
         "--from <SPEC>`, copying the named requirement ids into its Scope (scope is COPIED, never invented). " +
-        "Use when one spec fans out into parallel slices — 1:1 work needs no task. It writes NO board, NO " +
-        "review result, and issues NO verdict; it never overwrites an existing packet. Returns the created " +
-        "path + task id + scope.",
+        "Use when one spec fans out into parallel slices — 1:1 work needs no task. It never overwrites an " +
+        "existing packet. Returns the created path + task id + scope.",
       inputSchema: {
         spec: z
           .string()
@@ -437,9 +436,9 @@ function register_safe_write_tools(server: McpServer, ctx: Ctx): void {
       description:
         "VERDICT-FREE PREPARE OP: scaffold ONE candidate `findings/<slug>.md` from a finished " +
         "task/review id via `corpus promote`, pre-filling `from:` and leaving the what-we-learned body a " +
-        "placeholder. It asserts NO learning of its own (status: candidate, never accepted), writes NO " +
-        "board, and issues NO verdict — acceptance is the owner's. Backs the corpus_finding_candidate " +
-        "prompt. It never overwrites an existing finding. Returns the created path + slug.",
+        "placeholder. It asserts NO learning of its own (status: candidate, never accepted) — acceptance is " +
+        "the owner's. Backs the corpus_finding_candidate prompt. It never overwrites an existing finding. " +
+        "Returns the created path + slug.",
       inputSchema: {
         from: z
           .string()

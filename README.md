@@ -68,19 +68,25 @@ build is available:
 
 ```sh
 git clone https://github.com/jcosta33/corpus-mcp && cd corpus-mcp
-pnpm install && pnpm build && npm link   # exposes `corpus-mcp` on PATH (runs the built dist/)
+pnpm install && npm link   # exposes `corpus-mcp` on PATH (runs the TypeScript source via type-stripping)
 ```
 
-Node: a published/built install needs Node ≥ 18.18; running from a source checkout (no `dist/`) needs
-Node ≥ 22.6 (it strips types at runtime).
+Node: the launcher runs from source whenever `src/index.ts` is present (a source checkout — even after
+`pnpm build`), which strips types at runtime and needs Node ≥ 22.6. Only a published/files-pruned install
+with no `src/` runs the bundled `dist/`, which needs Node ≥ 18.18.
 
 ## Surface
 
-- **Read tools (8).** `corpus_get_status`, `corpus_list` (enumerate specs/tasks for an agent that has no
-  id), `corpus_check_workspace`, `corpus_check_file` (a spec, change-plan, or review packet — the one check
-  path), `corpus_get_task`, `corpus_get_spec`, `corpus_get_review`, `corpus_get_checks`. Each declares an
-  `outputSchema` and takes a `response_format: concise|detailed` — concise returns the relevant slice
-  (~⅓ the tokens), the verbatim payload on demand.
+- **Read tools (8).** Each declares an `outputSchema` and takes a `response_format: concise|detailed` —
+  concise returns the relevant slice (~⅓ the tokens), the verbatim payload on demand.
+  - `corpus_get_status` — the derived workspace board (specs, tasks, review status, triage lists).
+  - `corpus_list` — enumerate specs/tasks for an agent that has no id.
+  - `corpus_check_workspace` — the checks contract over every spec + change plan.
+  - `corpus_check_file` — the one check path for one file (a spec, change-plan, or review packet).
+  - `corpus_get_task` — a parsed task packet (scope, areas, claimed changes, embedded spec slice).
+  - `corpus_get_spec` — a parsed spec (frontmatter, requirements, `## Execution` run-record).
+  - `corpus_get_review` — a parsed review packet (status, coverage rows, verify blocks, identity).
+  - `corpus_get_checks` — the checks contract (version + the core checks).
 - **Reconcile tool (1).** `corpus_reconcile` — reconcile a `task` (or a `spec`, for the task-less 1:1
   review-to-spec case) against its spec and the worktree diff. ONE engine whether or not a review
   packet exists yet (the report carries `hasReviewPacket`; there is no separate scan tool). The
