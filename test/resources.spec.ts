@@ -161,7 +161,7 @@ describe("suspec-mcp resources", () => {
     try {
       expect(
         firstText(await client.readResource({ uri: "suspec://workspace" })),
-      ).toContain('"mode": "read-only"');
+      ).toContain('"mode": "read+reconcile+scaffold, no verdict"');
       expect(
         firstText(await client.readResource({ uri: "suspec://status" })),
       ).toContain('"level"');

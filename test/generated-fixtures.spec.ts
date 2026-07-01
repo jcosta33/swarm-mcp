@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+// @ts-expect-error — plain-JS helper shared with scripts/generate-fixtures.mjs (no .d.ts on purpose)
+import { resolveSuspecBin } from "../scripts/resolve-suspec-bin.mjs";
 
 // AC-011 — the fixtures stay GENERATED, not hand-edited. This test re-runs scripts/generate-fixtures.mjs
 // against the REAL `suspec` binary into a temp dir, then asserts the checked-in fixtures still match the
@@ -15,12 +17,13 @@ import { fileURLToPath } from "node:url";
 // filesystem paths (the temp workspace) and the review's content-addressed evidenceDigest (a hash of the
 // generated diff/packet) — to a placeholder, so the test asserts the SHAPE + the stable values, not the
 // machine it ran on. If the suspec binary is not present, the test is skipped (not failed): CI that lacks
-// a sibling suspec-cli checkout cannot regenerate, and a false red there would be noise.
+// a sibling suspec-cli checkout cannot regenerate, and a false red there would be noise — but the skip is
+// LOUD (a stderr warning names what was looked for), so a disarmed tripwire is visible, never silent.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
 const generator = join(repoRoot, "scripts", "generate-fixtures.mjs");
-const suspecBin = resolve(repoRoot, "..", "suspec-cli", "bin", "suspec.js");
+const suspecBin = resolveSuspecBin(repoRoot);
 const checkedInDir = join(here, "fixtures");
 
 const FIXTURES = [
@@ -42,7 +45,7 @@ const FIXTURES = [
 function normalize(value: unknown): unknown {
   if (typeof value === "string") {
     // an absolute path anywhere in the tree (the temp workspace root) → a placeholder.
-    return value.replace(/\/[^\s"]*?\/(?:specs|tasks|reviews|findings|\.worktrees)\//g, "/<root>/$1/").replace(
+    return value.replace(/\/[^\s"]*?\/(specs|tasks|reviews|findings|\.worktrees)\//g, "/<root>/$1/").replace(
       /^\/.*$/,
       (m) => (m.includes("/") && /\.(md|ts|txt)$/.test(m) ? "<path>" : m),
     );
@@ -65,7 +68,15 @@ function normalize(value: unknown): unknown {
   return value;
 }
 
-const suspecPresent = existsSync(suspecBin);
+const suspecPresent = suspecBin !== null;
+if (!suspecPresent) {
+  // eslint-disable-next-line no-console — a silently disarmed tripwire is worse than noise
+  console.warn(
+    "[generated-fixtures] SKIPPING the AC-011 drift tripwire: no suspec binary found " +
+      "(looked for SUSPEC_BIN and sibling checkouts whose package name is suspec-cli). " +
+      "Fixtures can go stale undetected until this suite runs somewhere the binary exists.",
+  );
+}
 
 describe.skipIf(!suspecPresent)(
   "the contract fixtures stay generated from the real binary (AC-011)",

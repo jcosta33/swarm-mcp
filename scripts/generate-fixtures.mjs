@@ -12,7 +12,8 @@
 //
 // Usage:  node scripts/generate-fixtures.mjs [--out <dir>] [--suspec-bin <path>]
 //   --out        where to write the fixtures (default: test/fixtures next to this script's repo)
-//   --suspec-bin the `suspec` binary (default: ../suspec-cli/bin/suspec.js relative to this repo)
+//   --suspec-bin the `suspec` binary (default: SUSPEC_BIN env, else any sibling checkout whose
+//                package name is "suspec-cli" — the folder name is irrelevant; see resolve-suspec-bin.mjs)
 
 import { spawnSync, execFileSync } from "node:child_process";
 import {
@@ -25,6 +26,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveSuspecBin } from "./resolve-suspec-bin.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
@@ -37,9 +39,15 @@ function arg(name, fallback) {
 }
 
 const outDir = resolve(arg("--out", join(repoRoot, "test", "fixtures")));
-const suspecBin = resolve(
-  arg("--suspec-bin", resolve(repoRoot, "..", "suspec-cli", "bin", "suspec.js")),
-);
+const suspecBinArg = arg("--suspec-bin", null);
+const suspecBin = suspecBinArg ? resolve(suspecBinArg) : resolveSuspecBin(repoRoot);
+if (!suspecBin) {
+  console.error(
+    "generate-fixtures: cannot find the suspec binary. Pass --suspec-bin <path>, set SUSPEC_BIN, " +
+      "or check out suspec-cli as a sibling (any folder name; package name must be suspec-cli).",
+  );
+  process.exit(2);
+}
 
 // Run `suspec <args> --json` in `cwd`; return the parsed JSON (or throw a clear error). `--json` is the
 // only flag this generator appends; it never passes a mutation flag the adapter would not.

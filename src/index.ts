@@ -12,6 +12,7 @@ export type Config = Readonly<{ root: string; bin: string }>;
 
 // Config order: CLI flags > env > cwd. `--workspace <path>` / SUSPEC_WORKSPACE picks the workspace;
 // `--suspec-bin <path>` / SUSPEC_BIN picks the `suspec` binary (default `suspec` on PATH).
+// Both flags accept the two-token form (`--workspace <path>`) and the equals form (`--workspace=<path>`).
 export function parse_config(
   argv: readonly string[],
   env: NodeJS.ProcessEnv,
@@ -20,14 +21,25 @@ export function parse_config(
   let root = env.SUSPEC_WORKSPACE ?? cwd;
   let bin = env.SUSPEC_BIN ?? "suspec";
   for (let i = 0; i < argv.length; i += 1) {
-    // Treat a flag-shaped next token as a missing value (don't consume `--suspec-bin` as the workspace).
+    const token = argv[i];
+    // `--flag=value` form.
+    const eq = token.indexOf("=");
+    if (eq > 2 && token.startsWith("--")) {
+      const name = token.slice(0, eq);
+      const value = token.slice(eq + 1);
+      if (name === "--workspace" && value !== "") root = value;
+      else if (name === "--suspec-bin" && value !== "") bin = value;
+      continue;
+    }
+    // `--flag value` form. Treat a flag-shaped next token as a missing value
+    // (don't consume `--suspec-bin` as the workspace).
     const next = argv[i + 1];
     const value =
       next !== undefined && !next.startsWith("--") ? next : undefined;
-    if (argv[i] === "--workspace" && value !== undefined) {
+    if (token === "--workspace" && value !== undefined) {
       root = value;
       i += 1;
-    } else if (argv[i] === "--suspec-bin" && value !== undefined) {
+    } else if (token === "--suspec-bin" && value !== undefined) {
       bin = value;
       i += 1;
     }

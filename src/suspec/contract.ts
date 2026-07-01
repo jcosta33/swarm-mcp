@@ -1,8 +1,12 @@
 // zod schemas mirroring the suspec CLI's real `--json` shapes (verified against the binary). These are
-// the DRIFT TRIPWIRE: suspec-mcp parses every CLI payload through them, so if suspec-cli renames or drops
-// a field suspec-mcp consumes (e.g. ReviewReport.coverage), the parse fails loudly in a test rather than
-// silently producing wrong tool output. `.passthrough()` keeps unknown extra fields (additive CLI
-// changes don't break us); the named fields are the ones suspec-mcp actually reads.
+// the DRIFT TRIPWIRE — and here is exactly where it fires: the TEST SUITE parses every checked-in
+// fixture through these schemas (contract.spec.ts), and generated-fixtures.spec.ts regenerates the
+// fixtures against the real binary, so a renamed/dropped field fails a test run. At RUNTIME only
+// ReviewReportSchema is parsed (envelope.ts); the other payload reads go through slices.ts's defensive
+// helpers, which degrade to missing fields rather than failing loudly. So the wire trips in CI/dev,
+// not in the running server — do not read this file as a live runtime guarantee for every shape.
+// `.passthrough()` keeps unknown extra fields (additive CLI changes don't break us); the named fields
+// are the ones suspec-mcp actually reads.
 //
 // ENUM POLICY (AC-011, audit F7): a field is modelled as a CLOSED `z.enum` ONLY when the adapter BRANCHES
 // on its exact value-set — so a new/renamed value the adapter cannot interpret trips the wire. A field the

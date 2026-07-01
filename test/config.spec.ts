@@ -34,4 +34,19 @@ describe("parse_config", () => {
     expect(c.bin).toBe("/b"); // --suspec-bin was NOT swallowed as the --workspace value
     expect(c.root).toContain("cwd"); // --workspace got no value → stays the cwd default
   });
+
+  it("accepts the equals form (--workspace=<path> / --suspec-bin=<path>)", () => {
+    const c = parse_config(
+      ["--workspace=/eq-ws", "--suspec-bin=/eq-bin"],
+      { SUSPEC_WORKSPACE: "/env-ws" },
+      "/cwd",
+    );
+    expect(c.bin).toBe("/eq-bin");
+    expect(c.root).toContain("eq-ws");
+  });
+
+  it("ignores an empty equals value (--workspace= keeps the default)", () => {
+    const c = parse_config(["--workspace="], {}, "/cwd");
+    expect(c.root).toContain("cwd");
+  });
 });

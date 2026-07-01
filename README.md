@@ -41,7 +41,9 @@ run a model loop, write a board, write a review result, or issue a verdict.
   tripwire (a renamed/dropped field the adapter _reads_ fails a test, not silently-wrong output), but a
   pass-through-only enum (a CLI advisory code the adapter merely relays) is `z.string()` — a benign additive
   CLI enum value is not a suspec-mcp break. The fixtures are **generated** from the real binary
-  (`pnpm fixtures`), and a test re-runs the generator so they can't go stale.
+  (`pnpm fixtures`), and a test re-runs the generator so a stale fixture fails wherever a suspec-cli
+  checkout is present (found via `SUSPEC_BIN` or a sibling checkout; absent one, the suite skips with a
+  loud warning rather than silently disarming).
 - **Many libraries, not a framework.** It couples to suspec-cli only through the public `--json` interface,
   so suspec-cli keeps its minimal footprint and each piece stays useful on its own.
 
@@ -71,9 +73,10 @@ git clone https://github.com/jcosta33/suspec-mcp && cd suspec-mcp
 pnpm install && npm link   # exposes `suspec-mcp` on PATH (runs the TypeScript source via type-stripping)
 ```
 
-Node: the launcher runs from source whenever `src/index.ts` is present (a source checkout — even after
-`pnpm build`), which strips types at runtime and needs Node ≥ 22.6. Only a published/files-pruned install
-with no `src/` runs the bundled `dist/`, which needs Node ≥ 18.18.
+Node: on Node ≥ 22.6 the launcher runs from source whenever `src/index.ts` is present (a source
+checkout — even after `pnpm build`), stripping types at runtime. On older Node it falls back to the
+bundled `dist/` when one exists (run `pnpm build` once), and errors only when neither path can work. A
+published/files-pruned install with no `src/` always runs `dist/`, which needs Node ≥ 18.18.
 
 ## Surface
 

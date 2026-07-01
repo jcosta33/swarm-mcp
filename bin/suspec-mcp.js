@@ -12,16 +12,21 @@ const sourceEntry = join(here, "../src/index.ts");
 const builtEntry = join(here, "../dist/index.js");
 const args = process.argv.slice(2);
 
+const [major, minor] = process.versions.node.split(".").map(Number);
+const nodeCanStripTypes = major > 22 || (major === 22 && minor >= 6);
+
 let res;
-if (existsSync(sourceEntry)) {
-  const [major, minor] = process.versions.node.split(".").map(Number);
-  if (major < 22 || (major === 22 && minor < 6)) {
-    console.error(
-      "Error: running suspec-mcp from source needs Node.js >= 22.6 (or run `pnpm build`).",
-    );
-    console.error(`Current version: ${process.versions.node}`);
-    process.exit(1);
-  }
+// Source checkout on new-enough Node runs the TS sources; otherwise fall back to a built dist when one
+// exists (so `pnpm build` IS a way out on older Node), and only error when neither path can work.
+if (existsSync(sourceEntry) && !nodeCanStripTypes && !existsSync(builtEntry)) {
+  console.error(
+    "Error: running suspec-mcp from source needs Node.js >= 22.6. " +
+      "Upgrade Node, or run `pnpm build` once — this launcher then uses the built dist/.",
+  );
+  console.error(`Current version: ${process.versions.node}`);
+  process.exit(1);
+}
+if (existsSync(sourceEntry) && nodeCanStripTypes) {
   res = spawnSync(
     process.execPath,
     [

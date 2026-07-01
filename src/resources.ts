@@ -42,7 +42,9 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
       const text = JSON.stringify(
         {
           workspaceRoot: ctx.root,
-          mode: "read-only",
+          // The real surface: read + reconcile tools, plus the safe-write scaffold tier
+          // (suspec_scaffold_spec / suspec_split_task / suspec_scaffold_finding). Never a verdict.
+          mode: "read+reconcile+scaffold, no verdict",
           noVerdictIssued: true,
           board,
         },
@@ -92,20 +94,24 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
   );
 
   // Templated artifact resources — the {id} is validated before the subprocess; an invalid id yields a
-  // labelled error body rather than a thrown read.
-  const stem_resource = (
+  // labelled error body rather than a thrown read. The task id passes VERBATIM (the CLI's own resolver
+  // tries the id, TASK-<slug>, and <slug> — pre-normalizing here would lowercase a mixed-case id the
+  // tool path resolves fine, exactly the mismatch suspec_get_task's comment warns about); the review id
+  // keeps the stem normalization because the lowercase review_slug IS the CLI's file key.
+  const artifact_resource = (
     name: string,
     template: string,
     kind: "task" | "review",
+    to_key: (id: string) => string,
   ): void => {
     server.registerResource(
       name,
       new ResourceTemplate(template, { list: undefined }),
       { title: name, mimeType: JSON_MIME },
       (uri, variables) => {
-        const stem = task_stem(String(variables.id));
-        const text = is_safe_segment(stem)
-          ? body_of(invoke_suspec(ctx.env, "show", [kind, stem]))
+        const key = to_key(String(variables.id));
+        const text = is_safe_segment(key)
+          ? body_of(invoke_suspec(ctx.env, "show", [kind, key]))
           : JSON.stringify({
               error: "InvalidId",
               message: `invalid id: ${String(variables.id)}`,
@@ -114,8 +120,8 @@ export function register_resources(server: McpServer, ctx: Ctx): void {
       },
     );
   };
-  stem_resource("task", "suspec://tasks/{id}", "task");
-  stem_resource("review", "suspec://reviews/{id}", "review");
+  artifact_resource("task", "suspec://tasks/{id}", "task", (id) => id);
+  artifact_resource("review", "suspec://reviews/{id}", "review", task_stem);
 
   server.registerResource(
     "spec",

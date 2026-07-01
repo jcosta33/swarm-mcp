@@ -94,7 +94,7 @@ describe("suspec-mcp prompts", () => {
     }
   });
 
-  it('no prompt grants verdict authority (no "approve"/"merge"/"Pass it")', async () => {
+  it('no prompt grants verdict authority (no "you may approve/merge/pass")', async () => {
     const { client, close } = await connect();
     try {
       for (const p of (await client.listPrompts()).prompts) {
@@ -106,9 +106,10 @@ describe("suspec-mcp prompts", () => {
         })) as {
           messages: { content: { type: string; text?: string } }[];
         };
-        // a prompt may discuss NOT approving, but must never instruct the agent to approve/merge.
+        // a prompt may discuss NOT approving ("you may NOT approve it"), but must never GRANT the
+        // authority — so the patterns match grant-forms only, with a lookbehind excluding negations.
         expect(promptText(r)).not.toMatch(
-          /\byou (may|can|should) approve\b|\bmerge it\b/i,
+          /\byou (may|can|should) (?!not\b)(approve|merge|pass)\b|(?<!not )\bmerge it\b|\bgo ahead and (approve|merge)\b|\brecord (a )?pass\b/i,
         );
       }
     } finally {
